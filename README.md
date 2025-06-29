@@ -62,7 +62,3 @@ Where:
 - $u_i(t)$: Current of neuron $i$ at time $t$
 - $\tau$: Time constant for the current decay
 - $\zeta(t)$: Ornstein-Uhlenbeck control signal
-
-
-
-
