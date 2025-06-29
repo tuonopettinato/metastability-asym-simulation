@@ -20,5 +20,5 @@ def compute_energy(W, h):
     # Total energy
     E_mat = h @ W @ h.T
     # Sum over the 0 axis to get a scalar
-    E_traj = np.sum(E_mat, axis=0)
+    E_traj = - np.sum(E_mat, axis=0)
     return E_traj

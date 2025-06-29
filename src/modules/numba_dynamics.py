@@ -201,9 +201,9 @@ def simulate_network_numba(W_S, W_A, initial_condition, n_steps, dt, tau,
     return u
 
 # Numba-optimized pattern overlap calculation
-@jit('float64[:,:](float64[:,:], float64[:,:], float64[:], float64[:], int64, int64)', nopython=True, cache=True, parallel=True)
+@jit('float64[:,:](float64[:,:], float64[:,:], float64[:], float64[:], int64, int64, bool)', nopython=True, cache=True, parallel=True)
 def calculate_pattern_overlaps_numba(u, patterns, phi_params, g_params,
-                                     phi_type, g_type):
+                                     phi_type, g_type, use_g=True):
     """
     Numba-optimized pattern overlap calculation
     
@@ -213,6 +213,8 @@ def calculate_pattern_overlaps_numba(u, patterns, phi_params, g_params,
         0 = sigmoid, 1 = relu
     g_type : int
         0 = sigmoid, 1 = step
+    use_g : bool
+        Whether to apply the g function to patterns (default: True)
     """
     n_timepoints, n_neurons = u.shape
     n_patterns = patterns.shape[0]
@@ -247,21 +249,29 @@ def calculate_pattern_overlaps_numba(u, patterns, phi_params, g_params,
         
         for p in range(n_patterns):
             g_phi_eta = g_phi_patterns[p, :]
-            
+            phi_eta = phi_patterns[p, :]
             # Calculate variances
             var_g_phi_eta = np.var(g_phi_eta)
             var_r = np.var(r)
-            
-            if var_g_phi_eta > 1e-10 and var_r > 1e-10:
-                # Calculate covariance manually
-                mean_g = np.mean(g_phi_eta)
-                mean_r = np.mean(r)
-                cov = np.mean((g_phi_eta - mean_g) * (r - mean_r))
-                
-                # Calculate overlap
-                overlaps[t, p] = cov / np.sqrt(var_g_phi_eta * var_r)
+            var_phi_eta = np.var(phi_eta)
+
+            if use_g:
+                if var_g_phi_eta > 1e-10 and var_r > 1e-10:
+                    # Calculate covariance manually
+                    mean_g = np.mean(g_phi_eta)
+                    mean_r = np.mean(r)
+                    cov = np.mean((g_phi_eta - mean_g) * (r - mean_r))
+
+                    # Calculate overlap
+                    overlaps[t, p] = cov / np.sqrt(var_g_phi_eta * var_r)
+                else:
+                    overlaps[t, p] = 0.0
             else:
-                overlaps[t, p] = 0.0
+                if var_phi_eta > 1e-10 and var_r > 1e-10:
+                    cov_phi_eta_r = np.cov(phi_eta, r)[0, 1]
+                    overlaps[t, p] = cov_phi_eta_r / np.sqrt(var_phi_eta * var_r)
+                else:
+                        overlaps[t, p] = 0.0
     
     return overlaps
 

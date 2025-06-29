@@ -8,6 +8,7 @@ All parameters are configured in parameters.py - edit that file to change simula
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from sympy import use
 from modules.connectivity import generate_connectivity_matrix, plot_matrix
 from modules.dynamics import simulate_network, calculate_pattern_overlaps
 from modules.energy import compute_energy
@@ -57,6 +58,7 @@ from parameters import (
     use_symmetric_only,
     model_type,
     use_numba,
+    use_g,
     use_ou,
     tau_zeta,
     zeta_bar,
@@ -198,7 +200,7 @@ def main():
             print("No patterns available. Using random initialization.")
     else:  # Near Memory Pattern
         if p > 0:
-            pattern = eta[pattern_idx % p]
+            pattern = eta[pattern_idx % p] # Getting the pattern based on index
             # Add noise scaled relative to pattern magnitude
             pattern_std = np.std(pattern)
             noise = np.random.normal(0, noise_level * pattern_std, N)
@@ -300,7 +302,8 @@ def main():
                                               phi_params,
                                               g_type,
                                               g_params,
-                                              use_numba=use_numba)
+                                              use_numba=use_numba,
+                                              use_g=use_g)
         print(f"\nFinal pattern overlaps:")
         for i in range(p):
             print(f"  Pattern {i+1}: {overlaps[-1, i]:.4f}")
@@ -345,6 +348,7 @@ def main():
         'apply_phi_to_patterns': apply_phi_to_patterns,
         'apply_er_to_asymmetric': apply_er_to_asymmetric,
         'use_ou': use_ou,
+        'use_g': use_g,
         'tau_zeta': tau_zeta if use_ou else None,  # Only include if using OU
         'zeta_bar': zeta_bar if use_ou else None,  # Only include if using OU
         'sigma_zeta': sigma_zeta if use_ou else None,  # Only include if using OU
@@ -397,7 +401,13 @@ def main():
     print(f"Saved: time, neural_currents, firing_rates, ou_process, connectivity matrices, memory_patterns")
     if p > 0 and overlaps is not None:
         print(f"Saved: pattern_overlaps")
-    
+        if use_g:
+            print('Overlaps calculated using g function')
+        else:
+            print('Overlaps calculated using default function')
+    else:
+        print(f"No patterns available, skipping overlaps saving.")
+
     # Create plot for Gaussian distribution and activation functions
     fig3, ax = plt.subplots(1, 1, figsize=(10, 6))
 
@@ -625,7 +635,7 @@ def main():
     overlaps_path = os.path.join(npy_dir, "pattern_overlaps.npy")
     original_symm_path = os.path.join(npy_dir, "connectivity_symmetric.npy")
     original_asymm_path = os.path.join(npy_dir, "connectivity_asymmetric.npy")
-    history_path = os.path.join(npy_dir, "firing_rates.npy")
+    history_path = os.path.join(npy_dir, "neural_currents.npy")
     W, h = np.load(connectivity_path), np.load(history_path)
     W_symm = np.load(original_symm_path)
     W_asymm = np.load(original_asymm_path)

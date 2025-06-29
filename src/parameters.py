@@ -60,11 +60,12 @@ dt = 0.2                # Time step for simulation output (increased for efficie
 
 # Performance optimization
 use_numba = False        # Enable Numba JIT compilation for large networks (N > 1000)
+use_g = True  # Whether to apply g function to patterns, default is True in Recanatesi et al. 
 
 # Initial condition settings
 init_cond_type = "Near Memory Pattern"  # Options: "Random", "Zero", "Memory Pattern", "Near Memory Pattern"
 pattern_idx = 0         # Which pattern to use (0-indexed) if using pattern-based init
-noise_level = 0.1       # Noise level if using "Near Memory Pattern" init
+noise_level = 0.5       # Noise level if using "Near Memory Pattern" init
 
 # Simulation options
 use_symmetric_only = False   # Whether to use only the symmetric component (W^S)
@@ -73,7 +74,7 @@ model_type = "recanatesi"   # Dynamics model: "recanatesi" or "brunel"
 # Ornstein-Uhlenbeck process parameters for ζ(t)
 use_ou = True          # Whether to use Ornstein-Uhlenbeck process for ζ(t)
 tau_zeta = 20.0          # OU time constant
-zeta_bar = 0.7          # OU mean value
+zeta_bar = 0.4          # OU mean value
 sigma_zeta = 0.3        # OU noise intensity
 constant_zeta = 0.5     # Constant ζ value when OU is not used
 
