@@ -74,7 +74,7 @@ model_type = "recanatesi"   # Dynamics model: "recanatesi" or "brunel"
 # Ornstein-Uhlenbeck process parameters for ζ(t)
 use_ou = True          # Whether to use Ornstein-Uhlenbeck process for ζ(t)
 tau_zeta = 20.0          # OU time constant
-zeta_bar = 0.4          # OU mean value
+zeta_bar = 0.6          # OU mean value
 sigma_zeta = 0.3        # OU noise intensity
 constant_zeta = 0.5     # Constant ζ value when OU is not used
 
