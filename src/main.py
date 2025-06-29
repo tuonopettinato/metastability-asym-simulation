@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Neural network dynamics simulation for local execution
-This script allows you to generate connectivity matrices and run simulations without the Streamlit interface.
+This script allows you to generate connectivity matrices and run simulations.
 
 All parameters are configured in parameters.py - edit that file to change simulation settings.
 """
@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from modules.connectivity import generate_connectivity_matrix, plot_matrix
 from modules.dynamics import simulate_network, calculate_pattern_overlaps
+from modules.energy import compute_energy
 
 # Import all parameters from parameters.py
 from parameters import (
@@ -178,7 +179,7 @@ def main():
             "\nSkipping matrix plots for large network (N > 2000) to save time and resources."
         )
 
-    # Set up initial condition with proper noise calculation (matching app.py)
+    # Set up initial condition with proper noise calculation 
     if init_cond_type == "Random":
         initial_condition = np.random.normal(0, 0.1, N)
         print("Initialized with random values.")
@@ -198,12 +199,12 @@ def main():
     else:  # Near Memory Pattern
         if p > 0:
             pattern = eta[pattern_idx % p]
-            # Add noise scaled relative to pattern magnitude (matching app.py fix)
+            # Add noise scaled relative to pattern magnitude
             pattern_std = np.std(pattern)
             noise = np.random.normal(0, noise_level * pattern_std, N)
             initial_condition = pattern + noise
 
-            # Calculate similarity (matching app.py)
+            # Calculate similarity
             norm_pattern = pattern / np.linalg.norm(pattern)
             norm_initial = initial_condition / np.linalg.norm(
                 initial_condition)
@@ -618,6 +619,47 @@ def main():
 
     plt.show()
     plt.close('all')  # Close all figures to free memory
+
+    # Calculate and plot energy
+    connectivity_path = os.path.join(npy_dir, "connectivity_total.npy")
+    overlaps_path = os.path.join(npy_dir, "pattern_overlaps.npy")
+    original_symm_path = os.path.join(npy_dir, "connectivity_symmetric.npy")
+    original_asymm_path = os.path.join(npy_dir, "connectivity_asymmetric.npy")
+    history_path = os.path.join(npy_dir, "firing_rates.npy")
+    W, h = np.load(connectivity_path), np.load(history_path)
+    W_symm = np.load(original_symm_path)
+    W_asymm = np.load(original_asymm_path)
+    # plot energy trajectories both original and divided with symmetric and antisymmetric components
+    E_total_traj = compute_energy(W, h)
+    E_symm_traj = compute_energy(W_symm, h)
+    E_asymm_traj = compute_energy(W_asymm, h)
+    t = np.arange(E_total_traj.shape[0])  # but time steps are dt seconds apart so multiply by dt
+    t = t * dt
+    plt.figure(figsize=(12, 6))
+    plt.plot(t, E_total_traj, label='Total Energy', color='blue')
+    plt.plot(t, E_symm_traj, label='Symmetric Energy', color='green')
+    plt.plot(t, E_asymm_traj, label='Asymmetric Energy', color='red')
+    plt.xlabel('Time Steps')
+    plt.ylabel('Energy')
+    plt.title('Energy Trajectories (Original symmetric and asymmetric components)')
+    plt.legend()
+    plt.grid()
+    plt.savefig(os.path.join(output_dir, "energy_trajectories_original.png"))
+    plt.show()
+    plt.figure(figsize=(12, 6))
+    W_symm_new = 0.5 * (W + W.T)
+    W_antisym_new = 0.5 * (W - W.T)
+    E_symm_new_traj, E_asymm_new_traj = compute_energy(W_symm_new, h), compute_energy(W_antisym_new, h)
+    plt.plot(t, E_total_traj, label='Total Energy', color='blue')
+    plt.plot(t, E_symm_new_traj, label='Symmetric Energy (New)', color='green')
+    plt.plot(t, E_asymm_new_traj, label='Antisymmetric Energy (New)', color='red')
+    plt.xlabel('Time Steps')
+    plt.ylabel('Energy')
+    plt.title('Energy Trajectories (New symmetric and antisymmetric components)')
+    plt.legend()
+    plt.grid()
+    plt.savefig(os.path.join(output_dir, "energy_trajectories_new.png"))
+    plt.show()
 
 if __name__ == "__main__":
     main()

@@ -55,7 +55,7 @@ apply_er_to_asymmetric = False  # Apply Erdős-Rényi to asymmetric component
 # Time and integration parameters
 tau = 20.0              # Time constant for neural dynamics
 t_start = 0.0           # Simulation start time
-t_end = 500.0           # Simulation end time
+t_end = 1000.0           # Simulation end time
 dt = 0.2                # Time step for simulation output (increased for efficiency)
 
 # Performance optimization
@@ -64,7 +64,7 @@ use_numba = False        # Enable Numba JIT compilation for large networks (N > 
 # Initial condition settings
 init_cond_type = "Near Memory Pattern"  # Options: "Random", "Zero", "Memory Pattern", "Near Memory Pattern"
 pattern_idx = 0         # Which pattern to use (0-indexed) if using pattern-based init
-noise_level = 0.9       # Noise level if using "Near Memory Pattern" init
+noise_level = 0.1       # Noise level if using "Near Memory Pattern" init
 
 # Simulation options
 use_symmetric_only = False   # Whether to use only the symmetric component (W^S)
