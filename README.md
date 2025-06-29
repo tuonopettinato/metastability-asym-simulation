@@ -12,8 +12,18 @@ Ensure that all dependencies are installed, including NumPy and Matplotlib, as s
 # Model
 The model is based on a RNN architecture that incorporates the principles of attractor dynamics. It is designed to retrieve memory patterns stored in the network's connectivity matrix. The network is initialized with a set of memory patterns, and the dynamics are governed by a set of differential equations that describe the evolution of the network's state over time. The symmetric part of the connectivity matrix is used to ensure that the network exhibits stable attractor dynamics, allowing it to converge to specific memory patterns (autoassociative retrieval), whereas the antisymmetric part introduces dynamics that can lead to heteroassociative retrieval of patterns.
 
-The network is initialized with a set of memory patterns $\eta_i^\mu$, where $i$ indexes the neurons and $\mu$ indexes the patterns. Values of $\eta_i^\mu$ are extracted from a Gaussian distribution with mean 0 and variance 1 without loss of generality.
+### Memory Patterns and Transfer Function
+
+The network is initialized with a set of memory patterns $\eta_i^\mu$, where $i$ indexes the neurons and $\mu$ indexes the patterns. Values of $\eta_i^\mu$ are extracted from a Gaussian distribution with mean 0 and variance 1 without loss of generality. Anyway, mean and variance can be set in `parameters.py` with `pattern_mean` and `pattern_variance` parameters. The patterns can also be generated such that they are sparse, meaning that only a fraction of the neurons are active. This sparsity is controlled by the parameter `alpha`, which determines the proportion of active neurons in each pattern.
+
 The activation (or transfer) function $\phi$ is then applied to these patterns to obtain the connectivity matrix components.
+The activation function is a sigmoid or a rectified linear unit (ReLU), which maps the input values to a range suitable for neural activity. The choice of activation function can be modified in `parameters.py` using the `activation_function` parameter.
+
+- sigmoid with parameters: $\phi(x) = \frac{r_m}{1 + e^{-\beta(x-x_r)}}$
+- ReLU with parameters: $\phi(x) = \text{amplitude} \cdot \max(0, x)$
+
+
+Where:
 
 ### Connectivity Matrix
 The connectivity matrix combines symmetric and asymmetric components:
@@ -29,16 +39,18 @@ Where:
 - $cN$: Normalization factor (total connections)
 - $p$: Number of memory patterns for the symmetric component
 - $f$ and $g$: Post-synaptic and pre-synaptic functions
-Note that an Erdős-Rényi random graph is used to generate the connectivity matrix: connections are made with probability $c < 1$
+- Erdős-Rényi random graph is used to generate the connectivity matrix: connections are made with probability $c < 1$
+
 
 **Asymmetric Component:**
 
 
 $$W_{ij}^A = \left(\frac{1}{N}\right) \cdot \sum_{\mu=1}^{q} f(\phi(\eta_i^{\mu+1})) g(\phi(\eta_j^\mu))$$
+
 Where:
 - $q$: Number of patterns for the asymmetric component ($q \leq p$)
 - $\mu+1$: Indexing for the asymmetric component, ensuring that the patterns are shifted by one index
-- Erdős-Rényi is not used unless specified in the parameters file (`use_er_asymmetric`)
+- Erdős-Rényi is not used unless specified in the parameters file (`apply_er_to_asymmetric`)
 
 ### Network Dynamics
 
