@@ -1,0 +1,77 @@
+"""
+modules/activation.py contains activation functions used in the neural network dynamics simulations.
+"""
+import numpy as np
+
+def tanh_function(x, amplitude=1.0, beta=1.0):
+  """Hyperbolic tangent function with adjustable amplitude and steepness"""
+  return amplitude * np.tanh(beta * x)
+
+def threshold_function(x, amplitude=1.0):
+  """Step/threshold function"""
+  return amplitude * np.sign(x)
+
+def sigmoid_function(x, r_m=1.0, beta=1.0, x_r=0.0):
+  """
+  Sigmoid function with adjustable maximum firing rate, slope at inflection point, 
+  inflection point or threshold (x_r)
+
+  Parameters:
+  -----------
+  x : array-like
+      Input values
+  r_m : float
+      Maximum firing rate (amplitude)
+  beta : float
+      Slope parameter at the inflection point
+  x_r : float
+      Inflection point location (threshold)
+
+  Returns:
+  --------
+  y : array-like
+      Output values between 0 and r_m
+  """
+  # Clip input to prevent overflow in exp function
+  clipped_input = np.clip(-beta * (x - x_r), -500, 500)
+  return r_m / (1.0 + np.exp(clipped_input))
+
+def relu_function(x, amplitude=1.0):
+  """
+  Standard ReLU function without clipping
+
+  Parameters:
+  -----------
+  x : array-like
+      Input values
+  amplitude : float
+      Scaling factor applied to the output (gain)
+
+  Returns:
+  --------
+  y : array-like
+      Output values, max(0, x) scaled by amplitude
+  """
+  return amplitude * np.maximum(0, x)
+
+def step_function(x, q_f=1.0, x_f=0.0):
+  """
+  Step function of the form: f = q_f for x > x_f, -(1-q_f) elsewhere
+  
+  Parameters:
+  -----------
+  x : array-like
+      Input values
+  q_f : float
+      Value when x > x_f
+  x_f : float
+      Threshold value
+  
+  Returns:
+  --------
+  y : array-like
+      Output values: q_f if x > x_f, -(1-q_f) otherwise
+  """
+  x = np.asarray(x)
+  y = np.where(x > x_f, q_f, -(1 - q_f))
+  return y
