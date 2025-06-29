@@ -15,6 +15,7 @@ It assumes the following directory structure:
 - src/loader.py
 - simulation_results/npy/ (contains .npy files with simulation data)
 - loaded_results/ (where the output plots will be saved)
+Note that both directories simulation_results/npy and loaded_results are in the .gitignore file.
 """
 import os
 import numpy as np

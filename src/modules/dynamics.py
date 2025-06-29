@@ -1,5 +1,6 @@
 """
-modules/dynamics.py contains functions for simulating neural network dynamics using different models and activation functions.
+modules/dynamics.py contains functions for simulating neural network dynamics using
+different models and activation functions.
 """
 
 import numpy as np

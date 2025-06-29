@@ -1,4 +1,6 @@
-""" connectivity.py contains functions to generate and analyze connectivity matrices"""
+"""
+connectivity.py contains functions to generate and analyze connectivity matrices
+"""
 import os
 import numpy as np
 import matplotlib.pyplot as plt
