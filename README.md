@@ -21,8 +21,7 @@ The activation (or transfer) function $\phi$ is then applied to these patterns t
 The connectivity matrix combines symmetric and asymmetric components:
 
 **Symmetric Component:**
-$$ W_{ij}^S = A \cdot \left(\frac{c_{ij}}{cN}\right) \cdot \sum_{\mu=1}^{p} f(\phi(\eta_i^\mu)) g(\phi(\eta_j^\mu))
-$$
+$$W_{ij}^S = A \cdot \left(\frac{c_{ij}}{cN}\right) \cdot \sum_{\mu=1}^{p} f(\phi(\eta_i^\mu)) g(\phi(\eta_j^\mu))$$
 Where:
 - $N$: Number of neurons
 - $A$: Scaling factor for the symmetric component
@@ -33,8 +32,7 @@ Where:
 Note that an Erdős-Rényi random graph is used to generate the connectivity matrix: connections are made with probability $c < 1$
 **Asymmetric Component:**
 Here the Erdős-Rényi random graph is not used unless specified in the parameters file, then
-$$ W_{ij}^A = \left(\frac{1}{N}\right) \cdot \sum_{\mu=1}^{q} f(\phi(\eta_i^{\mu+1})) g(\phi(\eta_j^\mu))
-$$
+$$W_{ij}^A = \left(\frac{1}{N}\right) \cdot \sum_{\mu=1}^{q} f(\phi(\eta_i^{\mu+1})) g(\phi(\eta_j^\mu))$$
 Where:
 - $q$: Number of patterns for the asymmetric component ($q \leq p$)
 - $\mu+1$: Indexing for the asymmetric component, ensuring that the patterns are shifted by one index.
@@ -42,7 +40,7 @@ Where:
 ### Network Dynamics
 
 The dynamics of the network are described by the following differential equation:
-$$ \frac{du_i(t)}{dt} = -\frac{u_i(t)}{\tau} + \sum_{j=1}^{N} W_{ij}^S \phi(u_j(t)) + \zeta(t)\cdot \sum_{j=1}^{N} W_{ij}^A \phi(u_j(t)) $$
+$$\frac{du_i(t)}{dt} = -\frac{u_i(t)}{\tau} + \sum_{j=1}^{N} W_{ij}^S \phi(u_j(t)) + \zeta(t)\cdot \sum_{j=1}^{N} W_{ij}^A \phi(u_j(t))$$
 Where:
 - `u_i(t)`: Post-synaptic currents
 - `φ(u_i)`: Current-to-rate transfer function
