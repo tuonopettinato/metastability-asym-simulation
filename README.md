@@ -30,17 +30,22 @@ Where:
 - $p$: Number of memory patterns for the symmetric component
 - $f$ and $g$: Post-synaptic and pre-synaptic functions
 Note that an Erdős-Rényi random graph is used to generate the connectivity matrix: connections are made with probability $c < 1$
+
 **Asymmetric Component:**
-Here the Erdős-Rényi random graph is not used unless specified in the parameters file, then
+
+
 $$W_{ij}^A = \left(\frac{1}{N}\right) \cdot \sum_{\mu=1}^{q} f(\phi(\eta_i^{\mu+1})) g(\phi(\eta_j^\mu))$$
 Where:
 - $q$: Number of patterns for the asymmetric component ($q \leq p$)
-- $\mu+1$: Indexing for the asymmetric component, ensuring that the patterns are shifted by one index.
+- $\mu+1$: Indexing for the asymmetric component, ensuring that the patterns are shifted by one index
+- Erdős-Rényi is not used unless specified in the parameters file (`use_er_asymmetric`)
 
 ### Network Dynamics
 
-The dynamics of the network are described by the following differential equation:
+The dynamics of the network is described by the following differential equation for each neuron current $u_i(t)$:
+
 $$\frac{du_i(t)}{dt} = -\frac{u_i(t)}{\tau} + \sum_{j=1}^{N} W_{ij}^S \phi(u_j(t)) + \zeta(t)\cdot \sum_{j=1}^{N} W_{ij}^A \phi(u_j(t))$$
+
 Where:
 - `u_i(t)`: Post-synaptic currents
 - `φ(u_i)`: Current-to-rate transfer function
