@@ -17,18 +17,18 @@ The model is based on a RNN architecture that incorporates the principles of att
 The network is initialized with a set of memory patterns $\eta_i^\mu$, where $i$ indexes the neurons and $\mu$ indexes the patterns. Values of $\eta_i^\mu$ are extracted from a Gaussian distribution with mean 0 and variance 1 without loss of generality. Anyway, mean and variance can be set in `parameters.py` with `pattern_mean` and `pattern_variance` parameters. The patterns can also be generated such that they are sparse, meaning that only a fraction of the neurons are active. This sparsity is controlled by the parameter `alpha`, which determines the proportion of active neurons in each pattern.
 
 The activation (or transfer) function $\phi$ is then applied to these patterns to obtain the connectivity matrix components.
-The activation function is a sigmoid or a rectified linear unit (ReLU), which maps the input values to a range suitable for neural activity. The choice of activation function can be modified in `parameters.py` using the `activation_function` parameter.
+The activation function is a sigmoid or a ReLU, which maps currents to neural activity (firing rates).
+The choice of activation function can be modified in `parameters.py` using the `activation_function` parameter.
 
-- sigmoid with parameters: $\phi(x) = \frac{r_m}{1 + e^{-\beta(x-x_r)}}$
-- ReLU with parameters: $\phi(x) = \text{amplitude} \cdot \max(0, x)$
-
-
-Where:
+- sigmoid
+$\phi(x) = \frac{r_m}{1 + e^{-\beta(x-x_r)}}$
+- ReLU 
+$\phi(x) = \text{amplitude} \cdot \max(0, x)$
 
 ### Connectivity Matrix
 The connectivity matrix combines symmetric and asymmetric components:
 
-**Symmetric Component:**
+**Symmetric Component**
 
 $$W_{ij}^S = A \cdot \left(\frac{c_{ij}}{cN}\right) \cdot \sum_{\mu=1}^{p} f(\phi(\eta_i^\mu)) g(\phi(\eta_j^\mu))$$
 
@@ -42,7 +42,7 @@ Where:
 - Erdős-Rényi random graph is used to generate the connectivity matrix: connections are made with probability $c < 1$
 
 
-**Asymmetric Component:**
+**Asymmetric Component**
 
 
 $$W_{ij}^A = \left(\frac{1}{N}\right) \cdot \sum_{\mu=1}^{q} f(\phi(\eta_i^{\mu+1})) g(\phi(\eta_j^\mu))$$
@@ -59,41 +59,10 @@ The dynamics of the network is described by the following differential equation 
 $$\frac{du_i(t)}{dt} = -\frac{u_i(t)}{\tau} + \sum_{j=1}^{N} W_{ij}^S \phi(u_j(t)) + \zeta(t)\cdot \sum_{j=1}^{N} W_{ij}^A \phi(u_j(t))$$
 
 Where:
-- `u_i(t)`: Post-synaptic currents
-- `φ(u_i)`: Current-to-rate transfer function
-- `ζ(t)`: Ornstein-Uhlenbeck control signal
+- $u_i(t)$: Current of neuron $i$ at time $t$
+- $\tau$: Time constant for the current decay
+- $\zeta(t)$: Ornstein-Uhlenbeck control signal
 
-**Activation Functions:**
-
-**Memory Patterns:**
-- `alpha`: Sparsity parameter (0-1)
-- `enforce_max_correlation`: Correlation constraint toggle
-- `max_correlation`: Maximum allowed pattern correlation
-
-**Dynamics:**
-- `simulation_time`: Total simulation duration
-- `dt`: Integration time step
-- `use_ou`: Enable Ornstein-Uhlenbeck process
-- `use_numba`: Enable high-performance optimization
-
-## Output Files
-
-### Plots Generated
-- `complete_simulation_results.png`: Combined 2×2 subplot figure
-- `neural_currents.png`: Individual neural current traces u_i(t)
-- `firing_rates.png`: Firing rate traces φ(u_i)(t)
-- `pattern_overlaps.png`: Memory pattern overlap evolution
-- `ou_process.png`: Ornstein-Uhlenbeck control signal
-- `connectivity_matrices.png`: Visualization of W_S, W_A, and W_total
-- `gaussian_activation_plot.png`: Pattern distribution and activation functions
-- `pattern_correlation_matrix.png`: Memory pattern correlation analysis
-
-### Data Archives (NPY Format)
-All simulation data is preserved in `simulation_results/npy/`:
-- Complete time series for all neurons
-- Connectivity matrices (symmetric, asymmetric, total)
-- Memory patterns and pattern overlaps
-- OU process values and firing rate histories
 
 
 
