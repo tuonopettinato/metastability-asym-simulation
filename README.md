@@ -21,6 +21,7 @@ The activation (or transfer) function $\phi$ is then applied to these patterns t
 The connectivity matrix combines symmetric and asymmetric components:
 
 **Symmetric Component:**
+
 $$W_{ij}^S = A \cdot \left(\frac{c_{ij}}{cN}\right) \cdot \sum_{\mu=1}^{p} f(\phi(\eta_i^\mu)) g(\phi(\eta_j^\mu))$$
 Where:
 - $N$: Number of neurons
