@@ -3,16 +3,14 @@
 This project is part of my Master's Thesis in Physics of Complex Systems and aims to simulate the dynamics of a neural network based on the principles outlined by Recanatesi, Mazzucato et al. (https://arxiv.org/abs/2001.09600).
 
 # Overview
-The code is structured to allow easy configuration of parameters related to the connectivity matrices and network dynamics.
-Users can modify these parameters in the `parameters.py` file to customize the simulation according to their research needs.
-The simulation results are visualized using Matplotlib, and the final overlaps of memory patterns are printed to the console.
-The results can also be saved as PNG files for further analysis or presentation.
-To run the simulation, execute the `main.py` script. Ensure that all dependencies are installed, including NumPy and Matplotlib, as specified in the `requirements.txt` file.
+Users can modify these parameters in `parameters.py` to customize the simulation.
+Results are visualized using Matplotlib, can also be saved as PNG files. The final overlaps of memory patterns are printed to the console.
+To run the simulation, execute the `main.py` script.
+
+Ensure that all dependencies are installed, including NumPy and Matplotlib, as specified in the `requirements.txt` file.
 
 # Model
 The model is based on a RNN architecture that incorporates the principles of attractor dynamics. It is designed to retrieve memory patterns stored in the network's connectivity matrix. The network is initialized with a set of memory patterns, and the dynamics are governed by a set of differential equations that describe the evolution of the network's state over time. The symmetric part of the connectivity matrix is used to ensure that the network exhibits stable attractor dynamics, allowing it to converge to specific memory patterns (autoassociative retrieval), whereas the antisymmetric part introduces dynamics that can lead to heteroassociative retrieval of patterns.
-
-## Mathematical Model
 
 The network is initialized with a set of memory patterns $\eta_i^\mu$, where $i$ indexes the neurons and $\mu$ indexes the patterns. Values of $\eta_i^\mu$ are extracted from a Gaussian distribution with mean 0 and variance 1 without loss of generality.
 The activation (or transfer) function $\phi$ is then applied to these patterns to obtain the connectivity matrix components.
@@ -23,6 +21,7 @@ The connectivity matrix combines symmetric and asymmetric components:
 **Symmetric Component:**
 
 $$W_{ij}^S = A \cdot \left(\frac{c_{ij}}{cN}\right) \cdot \sum_{\mu=1}^{p} f(\phi(\eta_i^\mu)) g(\phi(\eta_j^\mu))$$
+
 Where:
 - $N$: Number of neurons
 - $A$: Scaling factor for the symmetric component
