@@ -321,7 +321,7 @@ def generate_connectivity_matrix(N,
     # Double-check that diagonal elements are zero in total matrix
     np.fill_diagonal(W, 0)
 
-    return W_S, W_A, W, eta_raw
+    return W_S, W_A, W, eta_raw, eta # eta_raw is the unprocessed patterns, eta is the processed patterns with φ applied
 
 def calculate_pattern_correlation_matrix(eta_patterns):
     """

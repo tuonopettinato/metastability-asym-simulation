@@ -75,3 +75,17 @@ def step_function(x, q_f=1.0, x_f=0.0):
   x = np.asarray(x)
   y = np.where(x > x_f, q_f, -(1 - q_f))
   return y
+
+def inverse_sigmoid_function(x, r_m=1.0, beta=1.0, x_r=0.0):
+    """
+    Inverse of the 3-parameter sigmoid: g(x) = 1 / (1 + exp(-a(x - theta)))
+    """
+    x = np.clip(x, 1e-6, r_m - 1e-6)  # Avoid division by zero with clipping
+    return x_r + (1 / beta) * np.log(x / (r_m - x))
+
+def inverse_relu_function(x, amplitude=1.0):
+    """
+    Inverse of the ReLU function: g(x) = x / amplitude for x >= 0, 0 for x < 0
+    """
+    x = np.asarray(x)
+    return np.where(x >= 0, x / amplitude, 0.0)

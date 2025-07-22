@@ -10,6 +10,9 @@ Edit this file to configure your simulation, then run main.py to execute.
 # =============================================================================
 
 # Network size and pattern parameters
+from scipy.__config__ import show
+
+
 N = 1000               # Number of neurons (increased for Numba testing)
 p = 5                 # Number of patterns for symmetric component
 q = 3                  # Number of patterns for asymmetric component (q <= p)
@@ -55,7 +58,7 @@ apply_er_to_asymmetric = False  # Apply Erdős-Rényi to asymmetric component
 # Time and integration parameters
 tau = 20.0              # Time constant for neural dynamics
 t_start = 0.0           # Simulation start time
-t_end = 5000.0           # Simulation end time
+t_end = 3000.0           # Simulation end time
 dt = 0.2                # Time step for simulation output (increased for efficiency)
 
 # Performance optimization
@@ -76,7 +79,7 @@ use_ou = True          # Whether to use Ornstein-Uhlenbeck process for ζ(t)
 tau_zeta = 20.0          # OU time constant
 zeta_bar = 0.6          # OU mean value
 sigma_zeta = 0.3        # OU noise intensity
-constant_zeta = 0.5     # Constant ζ value when OU is not used
+constant_zeta = 1.     # Constant ζ value when OU is not used
 
 # =============================================================================
 # VISUALIZATION PARAMETERS
@@ -84,7 +87,7 @@ constant_zeta = 0.5     # Constant ζ value when OU is not used
 
 # Number of neurons to display in plots
 n_display = 10             # Maximum number of neurons to display in plots (reduced for 10k)
-
+show_sim_plots = False  # Whether to show individual plots for each variable
 
 # =============================================================================
 # SEED

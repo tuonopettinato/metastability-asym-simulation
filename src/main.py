@@ -6,6 +6,7 @@ This script allows you to generate connectivity matrices and run simulations.
 All parameters are configured in parameters.py - edit that file to change simulation settings.
 """
 import os
+from flask import app
 import numpy as np
 import matplotlib.pyplot as plt
 from sympy import use
@@ -67,6 +68,7 @@ from parameters import (
 
     # Visualization parameters
     n_display,
+    show_sim_plots,
 
     # Seed for reproducibility
     seed
@@ -82,7 +84,7 @@ def main():
     )
 
     # Generate connectivity matrix with all parameters
-    W_S, W_A, W, eta = generate_connectivity_matrix(
+    W_S, W_A, W, eta, phi_eta = generate_connectivity_matrix(
         N=N,
         p=p,
         q=q,
@@ -376,6 +378,7 @@ def main():
     np.save(os.path.join(npy_dir, "connectivity_asymmetric.npy"), W_A)
     np.save(os.path.join(npy_dir, "connectivity_total.npy"), W)
     np.save(os.path.join(npy_dir, "memory_patterns.npy"), eta)
+    np.save(os.path.join(npy_dir, "phi_memory_patterns.npy"), phi_eta)
     
     # Save OU process
     zeta_array = np.asarray(zeta)
@@ -626,19 +629,25 @@ def main():
 
     print(f"Saved complete figure: complete_simulation_results.png")
     print(f"Saved individual plots: {', '.join([f'{title}.png' for title in titles])}")
-
-    plt.show()
+    if show_sim_plots:
+        plt.show()
+    else:
+        print("Plots not displayed, only saved to files.")
     plt.close('all')  # Close all figures to free memory
 
     # Calculate and plot energy
+    print("\nCalculating and plotting energy trajectories...")
+    # Load connectivity matrices and history from npy files
     connectivity_path = os.path.join(npy_dir, "connectivity_total.npy")
     overlaps_path = os.path.join(npy_dir, "pattern_overlaps.npy")
     original_symm_path = os.path.join(npy_dir, "connectivity_symmetric.npy")
     original_asymm_path = os.path.join(npy_dir, "connectivity_asymmetric.npy")
-    history_path = os.path.join(npy_dir, "neural_currents.npy")
+    history_path = os.path.join(npy_dir, "firing_rates.npy")
+    phi_memory_patterns_path = os.path.join(npy_dir, "phi_memory_patterns.npy")
     W, h = np.load(connectivity_path), np.load(history_path)
     W_symm = np.load(original_symm_path)
     W_asymm = np.load(original_asymm_path)
+
     # plot energy trajectories both original and divided with symmetric and antisymmetric components
     E_total_traj = compute_energy(W, h)
     E_symm_traj = compute_energy(W_symm, h)
