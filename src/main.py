@@ -647,13 +647,17 @@ def main():
     W, h = np.load(connectivity_path), np.load(history_path)
     W_symm = np.load(original_symm_path)
     W_asymm = np.load(original_asymm_path)
-
+    phi_memory_patterns = np.load(phi_memory_patterns_path)
+    patterns = phi_memory_patterns.shape[0] if phi_memory_patterns.ndim > 1 else 1
+    for i in range(patterns):
+        print(f"Energy for pattern {i+1}: {compute_energy(W_symm, phi_memory_patterns[i])}")
     # plot energy trajectories both original and divided with symmetric and antisymmetric components
     E_total_traj = compute_energy(W, h)
     E_symm_traj = compute_energy(W_symm, h)
     E_asymm_traj = compute_energy(W_asymm, h)
     t = np.arange(E_total_traj.shape[0])  # but time steps are dt seconds apart so multiply by dt
     t = t * dt
+    print(E_symm_traj[4300] - E_symm_traj[300])
     plt.figure(figsize=(12, 6))
     plt.plot(t, E_total_traj, label='Total Energy', color='blue')
     plt.plot(t, E_symm_traj, label='Symmetric Energy', color='green')

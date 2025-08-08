@@ -24,30 +24,28 @@ def compute_energy(
     num_interp_points=1000
 ):
     """
-    Compute total energy E(t) = -0.5 * h_t^T W h_t + sum_i int_0^{h_i} g^{-1}(x) dx
+    Compute total energy E(h) = -0.5 * h^T W h + sum_i ∫₀^{h_i} g⁻¹(x) dx
     using lookup-table interpolation for fast integration.
-    It can handle both the single state case (h is a vector) and the multi-state case (h is a matrix).
-    
+
     Args:
         W: (N x N) connectivity matrix
-        h: (T x N) array of firing rates OR memory pattern (the single state case)
+        h: (M x N) array of firing rates (M states), or (N,) single state
         phi_function_type: "sigmoid" or "relu"
-        phi_amplitude, phi_beta, phi_r_m, phi_x_r: parameters of inverse activation
-        num_interp_points: number of points for lookup table grid
-        
+        phi_amplitude, phi_beta, phi_r_m, phi_x_r: activation inverse parameters
+        num_interp_points: resolution of lookup table
+
     Returns:
-        E: (T,) energy at each time step if h is a matrix, or a single value if h is a vector.
+        energies: (M,) energy values for each state, or scalar if h was 1D
     """
-    # Ensure h shape is (T, N)
+    # Normalize shape: (M, N)
     if h.ndim == 1:
-        h.reshape(-1, 1)  # If h is 1D, convert to 2D column vector
+        h = h.reshape(1, -1)
         single_state = True
-        T, N = 1, h.shape[0]
     else:
         single_state = False
-        T, N = h.shape
+    M, N = h.shape
 
-    # Select inverse function
+    # Select inverse function and clipping range
     if phi_function_type == "sigmoid":
         inv_func = lambda v: inverse_sigmoid_function(v, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
         h_clip_min = 1e-4
@@ -55,27 +53,33 @@ def compute_energy(
     elif phi_function_type == "relu":
         inv_func = lambda v: inverse_relu_function(v, amplitude=phi_amplitude)
         h_clip_min = 0.0
-        h_clip_max = phi_amplitude * 1.5  # estensione sicura
+        h_clip_max = phi_amplitude * 1.5
     else:
         raise ValueError("Unsupported phi_function_type")
 
     # Precompute lookup table
     x_vals = np.linspace(h_clip_min, h_clip_max, num_interp_points)
     integral_vals = np.array([quad(inv_func, 0, x)[0] for x in x_vals])
-    interp_integral = interp1d(x_vals, integral_vals, kind="linear", bounds_error=False, fill_value="extrapolate")
+    interp_integral = interp1d(
+        x_vals, integral_vals,
+        kind="linear",
+        bounds_error=False,
+        fill_value=(integral_vals[0], integral_vals[-1])  # Avoid extrapolation
+    )
 
-    # Compute energy
-    energies = np.zeros(T)
-    for t in range(T):
+    # Compute energy for each state
+    energies = np.zeros(M)
+    for t in range(M):
         h_t = h[t, :]
         h_t_clipped = np.clip(h_t, h_clip_min, h_clip_max)
 
-        # First term: -0.5 * h_t^T W h_t
+        # Synaptic term
         energy_syn = -0.5 * h_t @ W @ h_t
 
-        # Second term: sum_i ∫0^{h_i} g^{-1}(x) dx via interpolation
-        energy_act =  np.sum(interp_integral(h_t_clipped))
+        # Activation term via lookup-table integration
+        energy_act = np.sum(interp_integral(h_t_clipped))
+
         energies[t] = energy_syn + energy_act
 
-    return energies if not single_state else energies[0]
+    return energies[0] if single_state else energies
 
