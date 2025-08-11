@@ -635,54 +635,5 @@ def main():
         print("Plots not displayed, only saved to files.")
     plt.close('all')  # Close all figures to free memory
 
-    # Calculate and plot energy
-    print("\nCalculating and plotting energy trajectories...")
-    # Load connectivity matrices and history from npy files
-    connectivity_path = os.path.join(npy_dir, "connectivity_total.npy")
-    overlaps_path = os.path.join(npy_dir, "pattern_overlaps.npy")
-    original_symm_path = os.path.join(npy_dir, "connectivity_symmetric.npy")
-    original_asymm_path = os.path.join(npy_dir, "connectivity_asymmetric.npy")
-    history_path = os.path.join(npy_dir, "firing_rates.npy")
-    phi_memory_patterns_path = os.path.join(npy_dir, "phi_memory_patterns.npy")
-    W, h = np.load(connectivity_path), np.load(history_path)
-    W_symm = np.load(original_symm_path)
-    W_asymm = np.load(original_asymm_path)
-    phi_memory_patterns = np.load(phi_memory_patterns_path)
-    patterns = phi_memory_patterns.shape[0] if phi_memory_patterns.ndim > 1 else 1
-    for i in range(patterns):
-        print(f"Energy for pattern {i+1}: {compute_energy(W_symm, phi_memory_patterns[i])}")
-    # plot energy trajectories both original and divided with symmetric and antisymmetric components
-    E_total_traj = compute_energy(W, h)
-    E_symm_traj = compute_energy(W_symm, h)
-    E_asymm_traj = compute_energy(W_asymm, h)
-    t = np.arange(E_total_traj.shape[0])  # but time steps are dt seconds apart so multiply by dt
-    t = t * dt
-    print(E_symm_traj[4300] - E_symm_traj[300])
-    plt.figure(figsize=(12, 6))
-    plt.plot(t, E_total_traj, label='Total Energy', color='blue')
-    plt.plot(t, E_symm_traj, label='Symmetric Energy', color='green')
-    plt.plot(t, E_asymm_traj, label='Asymmetric Energy', color='red')
-    plt.xlabel('Time Steps')
-    plt.ylabel('Energy')
-    plt.title('Energy Trajectories (Original symmetric and asymmetric components)')
-    plt.legend()
-    plt.grid()
-    plt.savefig(os.path.join(output_dir, "energy_trajectories_original.png"))
-    plt.show()
-    plt.figure(figsize=(12, 6))
-    W_symm_new = 0.5 * (W + W.T)
-    W_antisym_new = 0.5 * (W - W.T)
-    E_symm_new_traj, E_asymm_new_traj = compute_energy(W_symm_new, h), compute_energy(W_antisym_new, h)
-    plt.plot(t, E_total_traj, label='Total Energy', color='blue')
-    plt.plot(t, E_symm_new_traj, label='Symmetric Energy (New)', color='green')
-    plt.plot(t, E_asymm_new_traj, label='Antisymmetric Energy (New)', color='red')
-    plt.xlabel('Time Steps')
-    plt.ylabel('Energy')
-    plt.title('Energy Trajectories (New symmetric and antisymmetric components)')
-    plt.legend()
-    plt.grid()
-    plt.savefig(os.path.join(output_dir, "energy_trajectories_new.png"))
-    plt.show()
-
 if __name__ == "__main__":
     main()

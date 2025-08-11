@@ -8,6 +8,7 @@ It also computes the energy trajectories for both the original symmetric and asy
 and the new symmetric and antisymmetric components derived from the total connectivity matrix.
 """
 
+import re
 import numpy as np
 from scipy.integrate import quad
 from scipy.interpolate import interp1d
@@ -69,17 +70,25 @@ def compute_energy(
 
     # Compute energy for each state
     energies = np.zeros(M)
+    syn_terms = np.zeros(M)
+    act_terms = np.zeros(M)
     for t in range(M):
         h_t = h[t, :]
         h_t_clipped = np.clip(h_t, h_clip_min, h_clip_max)
 
         # Synaptic term
         energy_syn = -0.5 * h_t @ W @ h_t
+        syn_terms[t] = energy_syn
 
         # Activation term via lookup-table integration
         energy_act = np.sum(interp_integral(h_t_clipped))
+        act_terms[t] = energy_act
 
         energies[t] = energy_syn + energy_act
 
-    return energies[0] if single_state else energies
+    if single_state:
+        return energies[0], syn_terms[0], act_terms[0]
+    else:
+        return energies, syn_terms, act_terms
+
 
