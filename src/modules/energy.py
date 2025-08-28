@@ -22,10 +22,11 @@ def compute_energy(
     phi_beta=1.5,
     phi_r_m=30.0,
     phi_x_r=2.0,
-    num_interp_points=1000
+    num_interp_points=1000,
+    activation_term=True
 ):
     """
-    Compute total energy E(h) = -0.5 * h^T W h + sum_i ∫₀^{h_i} g⁻¹(x) dx
+    Compute total energy E(h) = -0.5 * h^T W h + sum_i ∫₀^{h_i} phi⁻¹(x) dx
     using lookup-table interpolation for fast integration.
 
     Args:
@@ -34,6 +35,7 @@ def compute_energy(
         phi_function_type: "sigmoid" or "relu"
         phi_amplitude, phi_beta, phi_r_m, phi_x_r: activation inverse parameters
         num_interp_points: resolution of lookup table
+        activation_term: whether to include activation term in energy computation
 
     Returns:
         energies: (M,) energy values for each state, or scalar if h was 1D
@@ -84,7 +86,7 @@ def compute_energy(
         energy_act = np.sum(interp_integral(h_t_clipped))
         act_terms[t] = energy_act
 
-        energies[t] = energy_syn + energy_act
+        energies[t] = energy_syn + energy_act if activation_term else energy_syn
 
     if single_state:
         return energies[0], syn_terms[0], act_terms[0]

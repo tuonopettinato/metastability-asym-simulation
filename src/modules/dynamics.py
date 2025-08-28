@@ -5,6 +5,7 @@ different models and activation functions.
 
 import numpy as np
 import matplotlib.pyplot as plt
+from sympy import use
 
 # Import activation functions from connectivity module
 from modules.activation import tanh_function, sigmoid_function, relu_function, threshold_function
@@ -472,7 +473,7 @@ def calculate_pattern_overlaps(u, patterns, phi_function_type, phi_params, g_fun
             g_type_int = 0 if g_function_type == 'sigmoid' else 1
             
             return calculate_pattern_overlaps_numba(u, patterns, phi_params_array, g_params_array,
-                                                   phi_type_int, g_type_int)
+                                                   phi_type_int, g_type_int, use_g=use_g)
         except ImportError:
             print("Numba not available for overlap calculation, using standard method...")
     

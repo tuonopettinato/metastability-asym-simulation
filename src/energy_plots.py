@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import naive_bayes
 from sympy import E, use
+from modules.activation import step_function
 from modules.connectivity import generate_connectivity_matrix, plot_matrix
 from modules.dynamics import simulate_network, calculate_pattern_overlaps
 from modules.energy import compute_energy
@@ -84,26 +85,47 @@ def main():
     original_symm_path = os.path.join(npy_dir, "connectivity_symmetric.npy")
     history_path = os.path.join(npy_dir, "firing_rates.npy")
     phi_memory_patterns_path = os.path.join(npy_dir, "phi_memory_patterns.npy")
+    overlaps = np.transpose(np.load(overlaps_path))
     W, h = np.load(connectivity_path), np.load(history_path)
     W_symm = np.load(original_symm_path)
     phi_memory_patterns = np.load(phi_memory_patterns_path)
-    pattern_energies, _, _ = compute_energy(W_symm, phi_memory_patterns)
+
+    # Apply step function to phi_memory_patterns (maybe it's necessary: memories compose the matrix with the step applied)
+    phi_memory_patterns = step_function(phi_memory_patterns, f_q, f_x)
+    h = step_function(h, f_q, f_x)
+
+    # compute energy for each pattern and print it
+    pattern_energies, _, _ = compute_energy(W_symm, phi_memory_patterns, 'sigmoid', phi_beta, phi_r_m, phi_x_r, activation_term=True)
     for i in range(pattern_energies.shape[0]):
         print(f"Energy for pattern {i+1}: {pattern_energies[i]:.4f}")
-    # plot energy trajectory
-    E_symm_traj, syn_terms, act_terms = compute_energy(W_symm, h)
-    E_asymm_traj, _, _ = compute_energy(W - W_symm, h)
+
+    # plot energy trajectory (computing symm, asymm, total)
+    E_symm_traj, syn_terms, act_terms = compute_energy(W_symm, h, 'sigmoid', phi_beta, phi_r_m, phi_x_r, activation_term=True)
+    E_asymm_traj, _, _ = compute_energy(W - W_symm, h, 'sigmoid', phi_beta, phi_r_m, phi_x_r, activation_term=True)
     E_total_traj = E_symm_traj + E_asymm_traj
-    
+
+    # time steps
     t = np.arange(E_symm_traj.shape[0])  # but time steps are dt seconds apart so multiply by dt
     t = t * dt
-    plt.figure(figsize=(12, 6))
-    plt.plot(t, E_symm_traj, label='Symmetric Energy', color='green')
-    for i in range(3):
-        pattern_energies[i] = 4.47 * pattern_energies[i] - 33150
-        plt.plot(t, np.full_like(t, pattern_energies[i]), label=f'Pattern {i+1} Energy', linestyle='--')
-    plt.show()
 
+    # plot energy and overlaps in a subplot under the first one
+    plt.figure(figsize=(12, 6))
+    plt.subplot(2, 1, 1)
+    plt.plot(t, E_symm_traj, label='Symmetric Energy', color='green')
+    plt.ylim(min(E_symm_traj[100:])-10, max(E_symm_traj[100:])+10)
+    for i in range(3):
+        # pattern_energies[i] = 4.47 * pattern_energies[i] - 33150
+        pattern_energies[i] =  pattern_energies[i] 
+        plt.plot(t, np.full_like(t, pattern_energies[i]), label=f'Pattern {i+1} Energy', linestyle='--')
+    plt.subplot(2, 1, 2)
+    for i in range(p):
+        plt.plot(t, overlaps[i], label=f'Pattern {i+1} Overlap')
+    plt.xlabel('time steps')
+    plt.savefig(os.path.join(output_dir, "energy_and_overlaps.png"))
+    if show_sim_plots:
+        plt.show()
+
+    # Plot total, symmetric, and asymmetric energy for original and 'new' matrices
     plt.figure(figsize=(12, 6))
     plt.plot(t, E_total_traj, label='Total Energy', color='blue')
     plt.plot(t, E_symm_traj, label='Symmetric Energy', color='green')
@@ -118,8 +140,8 @@ def main():
     plt.figure(figsize=(12, 6))
     W_symm_new = 0.5 * (W + W.T)
     W_antisym_new = 0.5 * (W - W.T)
-    E_symm_new_traj, _, _ = compute_energy(W_symm_new, h)
-    E_asymm_new_traj, _, _ = compute_energy(W_antisym_new, h)
+    E_symm_new_traj, _, _ = compute_energy(W_symm_new, h, 'sigmoid', phi_beta, phi_r_m, phi_x_r)
+    E_asymm_new_traj, _, _ = compute_energy(W_antisym_new, h, 'sigmoid', phi_beta, phi_r_m, phi_x_r)
     plt.plot(t, E_total_traj, label='Total Energy', color='blue')
     plt.plot(t, E_symm_new_traj, label='Symmetric Energy (New)', color='green')
     plt.plot(t, E_asymm_new_traj, label='Antisymmetric Energy (New)', color='red')
@@ -129,7 +151,11 @@ def main():
     plt.legend()
     plt.grid()
     plt.savefig(os.path.join(output_dir, "energy_trajectories_new.png"))
-    plt.show()
+    if show_sim_plots:
+        plt.show()
+
+
+
 
 if __name__ == "__main__":
     main()

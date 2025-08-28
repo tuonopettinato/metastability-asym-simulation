@@ -267,6 +267,10 @@ def generate_connectivity_matrix(N,
         f_eta_i = f(eta[mu, :]).reshape(-1, 1)  # Column vector
         g_eta_j = g(eta[mu, :]).reshape(1, -1)  # Row vector
 
+        # centering 
+        f_eta_i -= np.mean(f_eta_i)
+        g_eta_j -= np.mean(g_eta_j)
+        
         # Compute the matrix element-wise product and ensure symmetry
         product_matrix = np.outer(f_eta_i, g_eta_j)
         # symmetric_product = 0.5 * (product_matrix + product_matrix.T)
