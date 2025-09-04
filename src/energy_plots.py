@@ -91,11 +91,11 @@ def main():
     phi_memory_patterns = np.load(phi_memory_patterns_path)
 
     # Apply step function to phi_memory_patterns (maybe it's necessary: memories compose the matrix with the step applied)
-    phi_memory_patterns = step_function(phi_memory_patterns, f_q, f_x)
-    h = step_function(h, f_q, f_x)
+    # phi_memory_patterns = step_function(phi_memory_patterns, f_q, f_x)
+    # h = step_function(h, f_q, f_x)
 
     # compute energy for each pattern and print it
-    pattern_energies, _, _ = compute_energy(W_symm, phi_memory_patterns, 'sigmoid', phi_beta, phi_r_m, phi_x_r, activation_term=True)
+    pattern_energies, _, _ = compute_energy(W_symm, phi_memory_patterns, 'sigmoid', phi_beta, phi_r_m, phi_x_r, activation_term=False)
     for i in range(pattern_energies.shape[0]):
         print(f"Energy for pattern {i+1}: {pattern_energies[i]:.4f}")
 
@@ -125,6 +125,7 @@ def main():
     if show_sim_plots:
         plt.show()
 
+"""
     # Plot total, symmetric, and asymmetric energy for original and 'new' matrices
     plt.figure(figsize=(12, 6))
     plt.plot(t, E_total_traj, label='Total Energy', color='blue')
@@ -153,7 +154,7 @@ def main():
     plt.savefig(os.path.join(output_dir, "energy_trajectories_new.png"))
     if show_sim_plots:
         plt.show()
-
+"""
 
 
 

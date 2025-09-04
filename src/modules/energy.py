@@ -13,6 +13,7 @@ import numpy as np
 from scipy.integrate import quad
 from scipy.interpolate import interp1d
 from modules.activation import inverse_sigmoid_function, inverse_relu_function
+from modules.activation import derivative_sigmoid_function, derivative_relu_function
 
 
 def compute_energy(
@@ -62,7 +63,7 @@ def compute_energy(
 
     # Precompute lookup table
     x_vals = np.linspace(h_clip_min, h_clip_max, num_interp_points)
-    integral_vals = np.array([quad(inv_func, 0, x)[0] for x in x_vals])
+    integral_vals = np.array([quad(lambda x: inv_func(x), 0, x)[0] for x in x_vals])
     interp_integral = interp1d(
         x_vals, integral_vals,
         kind="linear",

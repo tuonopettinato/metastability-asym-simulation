@@ -89,3 +89,21 @@ def inverse_relu_function(x, amplitude=1.0):
     """
     x = np.asarray(x)
     return np.where(x >= 0, x / amplitude, 0.0)
+
+def derivative_sigmoid_function(x, r_m=1.0, beta=1.0, x_r=0.0):
+    """
+    Derivative of the 3-parameter sigmoid: 
+    g(x) = r_m / (1 + exp(-beta(x - x_r)))
+    g'(x) = beta * g(x) * (1 - g(x)/r_m)
+    """
+    g_x = r_m / (1 + np.exp(-beta * (x - x_r)))
+    return beta * g_x * (1 - g_x / r_m)
+
+def derivative_relu_function(x, amplitude=1.0):
+    """
+    Derivative of the ReLU function:
+    g(x) = max(0, x) / amplitude
+    g'(x) = 1/amplitude for x > 0, 0 otherwise
+    """
+    x = np.asarray(x)
+    return np.where(x > 0, 1.0 / amplitude, 0.0)
