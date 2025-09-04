@@ -88,6 +88,12 @@ constant_zeta = 1.     # Constant ζ value when OU is not used
 # Number of neurons to display in plots
 n_display = 10             # Maximum number of neurons to display in plots (reduced for 10k)
 show_sim_plots = False  # Whether to show individual plots for each variable
+verbose = False
+single_dir_name = "simulation_results"
+multiple_dir_name = "multiple_simulations"
+
+# Number of runs
+runs = 5
 
 # =============================================================================
 # SEED

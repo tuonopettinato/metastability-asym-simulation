@@ -6,7 +6,6 @@ This script allows you to generate connectivity matrices and run simulations.
 All parameters are configured in parameters.py - edit that file to change simulation settings.
 """
 import os
-from flask import app
 import numpy as np
 import matplotlib.pyplot as plt
 from sympy import use
@@ -76,14 +75,12 @@ from parameters import (
 
 
 
-def simulation(seed = seed, addition = None):
+def simulation():
     """
     Simulation of the network dynamics. 
-    seed and addition are needed in order to run multiple simulations
-    addition is a string that will be used to save and identify the simulation run
     """
     np.random.seed(seed)  # for reproducibility
-    output_dir_name = f"multiple_simulations/{addition}" if addition else "simulation_results"
+    output_dir_name = "simulation_results"
     output_dir = os.path.join(os.path.dirname(__file__), "..", output_dir_name)
     os.makedirs(output_dir, exist_ok=True) 
     print(
