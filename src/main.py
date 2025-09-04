@@ -551,6 +551,11 @@ def multiple_simulations():
     }
     # Save parameters to npy file
     np.save(os.path.join(npy_dir, "simulation_parameters.npy"), params)
+    # Save parameters to txt file
+    with open(os.path.join(output_dir, "parameters.txt"), "w") as f:
+        for key, value in params.items():
+            f.write(f"{key}: {value}\n")
+        f.close()
 
     # Save simulation data as .npy files
     print(f"\nSaving simulation data to '{npy_dir}'...")

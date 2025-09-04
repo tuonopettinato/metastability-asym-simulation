@@ -640,4 +640,4 @@ def simulation():
     plt.close('all')  # Close all figures to free memory
 
 if __name__ == "__main__":
-    simulation(seed = seed)
+    simulation()
