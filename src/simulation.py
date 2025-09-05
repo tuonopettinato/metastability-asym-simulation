@@ -5,10 +5,12 @@ This script allows you to generate connectivity matrices and run simulations.
 
 All parameters are configured in parameters.py - edit that file to change simulation settings.
 """
+from math import log
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 from sympy import use
+from loguru import logger
 from modules.connectivity import generate_connectivity_matrix, plot_matrix
 from modules.dynamics import simulate_network, calculate_pattern_overlaps
 from modules.energy import compute_energy
@@ -68,6 +70,10 @@ from parameters import (
     # Visualization parameters
     n_display,
     show_sim_plots,
+    plot_connectivity_matrices,
+    plot_heatmap,
+    single_dir_name,
+    verbose,
 
     # Seed for reproducibility
     seed
@@ -80,10 +86,9 @@ def simulation():
     Simulation of the network dynamics. 
     """
     np.random.seed(seed)  # for reproducibility
-    output_dir_name = "simulation_results"
-    output_dir = os.path.join(os.path.dirname(__file__), "..", output_dir_name)
+    output_dir = os.path.join(os.path.dirname(__file__), "..", single_dir_name)
     os.makedirs(output_dir, exist_ok=True) 
-    print(
+    logger.info(
         f"Generating connectivity matrices for {N} neurons with {p} patterns..."
     )
 
@@ -119,51 +124,56 @@ def simulation():
         alpha=alpha,
         enforce_max_correlation=enforce_max_correlation,
         max_correlation=max_correlation)
-    print("Matrices generated successfully!")
+    logger.info("Matrices generated successfully!")
 
     # Display matrix statistics
-    print("\nMatrix statistics:")
-    print(
-        f"W_S: Mean={W_S.mean():.6f}, Std={W_S.std():.4f}, Min={W_S.min():.4f}, Max={W_S.max():.4f}"
-    )
-    print(
-        f"W_A: Mean={W_A.mean():.8f}, Std={W_A.std():.4f}, Min={W_A.min():.4f}, Max={W_A.max():.4f}"
-    )
-    print(
-        f"W: Mean={W.mean():.8f}, Std={W.std():.4f}, Min={W.min():.4f}, Max={W.max():.4f}"
-    )
+    if verbose:
+        logger.info("\nMatrix statistics:")
+        logger.info(
+            f"W_S: Mean={W_S.mean():.6f}, Std={W_S.std():.4f}, Min={W_S.min():.4f}, Max={W_S.max():.4f}"
+        )
+        logger.info(
+            f"W_A: Mean={W_A.mean():.8f}, Std={W_A.std():.4f}, Min={W_A.min():.4f}, Max={W_A.max():.4f}"
+        )
+        logger.info(
+            f"W: Mean={W.mean():.8f}, Std={W.std():.4f}, Min={W.min():.4f}, Max={W.max():.4f}"
+        )
 
-    # Check symmetry
-    symmetry_diff = W_S - W_S.T
-    max_symmetry_diff = np.max(np.abs(symmetry_diff))
-    print(f"Max |W_S - W_S^T|: {max_symmetry_diff:.8f}")
 
-    # Check asymmetry
-    asymmetry_diff = W_A - W_A.T
-    max_asymmetry_diff = np.max(np.abs(asymmetry_diff))
-    print(f"Max |W_A - W_A^T|: {max_asymmetry_diff:.8f}")
+        # Check symmetry
+        symmetry_diff = W_S - W_S.T
+        max_symmetry_diff = np.max(np.abs(symmetry_diff))
+        logger.info(f"Max |W_S - W_S^T|: {max_symmetry_diff:.8f}")
+
+        # Check asymmetry
+        asymmetry_diff = W_A - W_A.T
+        max_asymmetry_diff = np.max(np.abs(asymmetry_diff))
+        logger.info(f"Max |W_A - W_A^T|: {max_asymmetry_diff:.8f}")
+    else:
+        None
 
     # Calculate and print pattern correlation analysis
     from modules.connectivity import calculate_pattern_correlation_matrix, plot_pattern_correlation_matrix
     correlation_matrix, actual_max_correlation = calculate_pattern_correlation_matrix(
         eta)
 
-    print(f"\nMemory Pattern Correlation Analysis:")
-    print(f"Number of patterns: {eta.shape[0]}")
-    print(f"Correlation constraint enforced: {enforce_max_correlation}")
-    if enforce_max_correlation:
-        print(f"Maximum correlation threshold: {max_correlation:.3f}")
-    print(f"Actual maximum correlation: {actual_max_correlation:.3f}")
-    print(f"Correlation matrix:")
-    for i in range(correlation_matrix.shape[0]):
-        row_str = " ".join([
-            f"{correlation_matrix[i,j]:6.3f}"
-            for j in range(correlation_matrix.shape[1])
-        ])
-        print(f"  η{i+1}: [{row_str}]")
-    
-    if N < 2001: # Only plot matrices for smaller networks
-        print("\nPlotting connectivity matrices...")
+    if verbose:
+        logger.info(f"\nMemory Pattern Correlation Analysis:")
+        logger.info(f"Number of patterns: {eta.shape[0]}")
+        logger.info(f"Correlation constraint enforced: {enforce_max_correlation}")
+        if enforce_max_correlation:
+            logger.info(f"Maximum correlation threshold: {max_correlation:.3f}")
+        logger.info(f"Actual maximum correlation: {actual_max_correlation:.3f}")
+        logger.info(f"Correlation matrix:")
+        for i in range(correlation_matrix.shape[0]):
+            row_str = " ".join([
+                f"{correlation_matrix[i,j]:6.3f}"
+                for j in range(correlation_matrix.shape[1])
+            ])
+            logger.info(f"  η{i+1}: [{row_str}]")
+
+    if N < 2001 and plot_connectivity_matrices: # Only plot matrices for smaller networks
+        logger.info("\nPlotting connectivity matrices...")
         # Plot matrices
         _, _, _ = plot_pattern_correlation_matrix(eta,
                                                 enforce_max_correlation,
@@ -181,29 +191,29 @@ def simulation():
 
         plt.tight_layout()
         plt.savefig(os.path.join(output_dir, "connectivity_matrices.png"), dpi=150)
-        print(f"Saved matrices visualization")
+        logger.info(f"Saved matrices visualization")
     else:
-        print(
-            "\nSkipping matrix plots for large network (N > 2000) to save time and resources."
+        logger.info(
+            "\nSkipping matrix plots for large network (N > 2000) or to save time and resources."
         )
 
     # Set up initial condition with proper noise calculation 
     if init_cond_type == "Random":
         initial_condition = np.random.normal(0, 0.1, N)
-        print("Initialized with random values.")
+        logger.info("Initialized with random values.")
     elif init_cond_type == "Zero":
         initial_condition = np.zeros(N)
-        print("Initialized with zeros.")
+        logger.info("Initialized with zeros.")
     elif init_cond_type == "Memory Pattern":
         if p > 0:
             pattern = eta[pattern_idx % p]
             initial_condition = pattern.copy()
-            print(
+            logger.info(
                 f"Initialized with memory pattern {(pattern_idx % p)+1} of {p}"
             )
         else:
             initial_condition = np.random.normal(0, 0.1, N)
-            print("No patterns available. Using random initialization.")
+            logger.info("No patterns available. Using random initialization.")
     else:  # Near Memory Pattern
         if p > 0:
             pattern = eta[pattern_idx % p] # Getting the pattern based on index
@@ -217,12 +227,12 @@ def simulation():
             norm_initial = initial_condition / np.linalg.norm(
                 initial_condition)
             similarity = np.dot(norm_pattern, norm_initial)
-            print(
+            logger.info(
                 f"Initialized near memory pattern {(pattern_idx % p)+1} of {p}. Similarity: {similarity:.4f}"
             )
         else:
             initial_condition = np.random.normal(0, 0.1, N)
-            print("No patterns available. Using random initialization.")
+            logger.info("No patterns available. Using random initialization.")
 
     # Simulation time span
     t_span = (t_start, t_end)
@@ -234,31 +244,31 @@ def simulation():
             'zeta_bar': zeta_bar,
             'sigma_zeta': sigma_zeta
         }
-        print(
+        logger.info(
             f"Using Ornstein-Uhlenbeck process: τ_ζ={tau_zeta}, ζ̄={zeta_bar}, σ_ζ={sigma_zeta}"
         )
     else:
         ou_params = None
-        print(f"Using constant ζ = {constant_zeta}")
+        logger.info(f"Using constant ζ = {constant_zeta}")
 
     # Choose which connectivity matrix to use
     if use_symmetric_only:
         W_A_sim = np.zeros_like(W_A)
-        print("Using only the symmetric component (W^S) for dynamics.")
+        logger.info("Using only the symmetric component (W^S) for dynamics.")
     else:
         W_A_sim = W_A
-        print("Using both symmetric and asymmetric components for dynamics.")
+        logger.info("Using both symmetric and asymmetric components for dynamics.") if verbose else None
 
-    print(f"\nRunning {model_type} dynamics simulation...")
-    print(f"Time span: {t_start} to {t_end}, τ = {tau}")
-    print(
+    logger.info(f"\nRunning {model_type} dynamics simulation...")
+    logger.info(f"Time span: {t_start} to {t_end}, τ = {tau}")
+    logger.info(
         f"φ function: {phi_function_type} (β={phi_beta}, r_m={phi_r_m}, x_r={phi_x_r})"
     )
 
     if use_numba and N > 1000:
-        print(f"Numba optimization enabled for {N} neurons")
+        logger.info(f"Numba optimization enabled for {N} neurons")
     elif not use_numba:
-        print("Numba optimization disabled")
+        logger.info("Numba optimization disabled")
 
     # Run simulation with same φ parameters used in connectivity generation
     t, u, zeta = simulate_network(
@@ -280,7 +290,7 @@ def simulation():
         constant_zeta=constant_zeta if not use_ou else None,
         use_numba=use_numba)
 
-    print("\nSimulation completed successfully!")
+    logger.info("\nSimulation completed successfully!")
 
     # Calculate pattern overlaps
     overlaps = None
@@ -310,10 +320,10 @@ def simulation():
                                               g_params,
                                               use_numba=use_numba,
                                               use_g=use_g)
-        print(f"\nFinal pattern overlaps:")
+        logger.info(f"\nFinal pattern overlaps:")
         for i in range(p):
-            print(f"  Pattern {i+1}: {overlaps[-1, i]:.4f}")
-        print(
+            logger.info(f"  Pattern {i+1}: {overlaps[-1, i]:.4f}")
+        logger.info(
             f" \nHighest final overlap: {np.max(overlaps[-1, :]):.4f} (Pattern {np.argmax(overlaps[-1, :]) + 1})"
         )
         
@@ -405,15 +415,15 @@ def simulation():
     if p > 0 and overlaps is not None:
         np.save(os.path.join(npy_dir, "pattern_overlaps.npy"), overlaps)
     
-    print(f"Saved: time, neural_currents, firing_rates, ou_process, connectivity matrices, memory_patterns")
+    logger.info(f"Saved: time, neural_currents, firing_rates, ou_process, connectivity matrices, memory_patterns")
     if p > 0 and overlaps is not None:
-        print(f"Saved: pattern_overlaps")
+        logger.info(f"Saved: pattern_overlaps")
         if use_g:
-            print('Overlaps calculated using g function')
+            logger.info('Overlaps calculated using g function')
         else:
-            print('Overlaps calculated using default function')
+            logger.info('Overlaps calculated using default function')
     else:
-        print(f"No patterns available, skipping overlaps saving.")
+        logger.info(f"No patterns available, skipping overlaps saving.")
 
     # Create plot for Gaussian distribution and activation functions
     fig3, ax = plt.subplots(1, 1, figsize=(10, 6))
@@ -496,12 +506,12 @@ def simulation():
 
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'gaussian_activation_plot.png'), dpi=150)
-    print(
+    logger.info(
         "Saved Gaussian distribution and activation function plot to 'simulation_results/gaussian_activation_plot.png'"
     )
 
     # Create complete 2x2 figure AND individual plots
-    print(f"\nCreating dynamics figure and individual plots...")
+    logger.info(f"\nCreating dynamics figure and individual plots...")
     
     # Create 2x2 subplot figure
     fig, axs = plt.subplots(2, 2, figsize=(15, 10))
@@ -619,24 +629,26 @@ def simulation():
         # Save individual plot
         fig_single.savefig(os.path.join(output_dir, f"{titles[i]}.png"), dpi=300)
         plt.close(fig_single)  # Close to free memory
+        
+        if plot_heatmap:
+            # Plot the firing rates of ALL neurons as a heatmap in another figure
+            plt.figure(figsize=(10, 6))
+            plt.imshow(phi_u.T, aspect='auto', cmap='viridis', origin='lower')
+            plt.colorbar(label='FR')
+            plt.title(f'Firing Rates of all {N} neurons')
+            plt.xlabel('Time')
+            plt.ylabel('Neuron Index')
+            plt.tight_layout()
+            plt.savefig(os.path.join(output_dir, "firing_rates_heatmap.png"), dpi=300) # Save heatmap
+            plt.close()
+        else: None
 
-        # Plot the firing rates of ALL neurons as a heatmap in another figure
-        plt.figure(figsize=(10, 6))
-        plt.imshow(phi_u.T, aspect='auto', cmap='viridis', origin='lower')
-        plt.colorbar(label='FR')
-        plt.title(f'Firing Rates of all {N} neurons')
-        plt.xlabel('Time')
-        plt.ylabel('Neuron Index')
-        plt.tight_layout()
-        plt.savefig(os.path.join(output_dir, "firing_rates_heatmap.png"), dpi=300) # Save heatmap
-        plt.close()
-
-    print(f"Saved complete figure: complete_simulation_results.png")
-    print(f"Saved individual plots: {', '.join([f'{title}.png' for title in titles])}")
+    logger.info(f"Saved complete figure: complete_simulation_results.png")
+    logger.info(f"Saved individual plots: {', '.join([f'{title}.png' for title in titles])}")
     if show_sim_plots:
         plt.show()
     else:
-        print("Plots not displayed, only saved to files.")
+        logger.info("Plots not displayed, only saved to files.")
     plt.close('all')  # Close all figures to free memory
 
 if __name__ == "__main__":

@@ -195,8 +195,25 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
     # Save pattern overlaps if available
     if p > 0 and overlaps is not None:
         np.save(os.path.join(npy_dir, "pattern_overlaps.npy"), overlaps)
+    
+    plt.figure()
+    if p > 0 and overlaps is not None:
+        for i in range(p):
+            plt.plot(t, overlaps[:, i], label=f'Pattern {i+1}', linewidth=2)
+        plt.xlabel('Time')
+        plt.ylabel('Pattern Overlap')
+        plt.title(f'Memory Pattern Overlaps (A={A_S}, seed = {seed})')
+        plt.grid(True)
+        plt.legend()
+    else:
+        plt.text(0.5, 0.5, 'No patterns to display', ha='center', va='center', transform=plt.gca().transAxes)
+        plt.title('Pattern Overlaps')
+    plt.tight_layout()
+    plt.savefig(os.path.join(specific_output_dir, "pattern_overlaps.png"), dpi=300)
+    plt.close()
 
 
+    """
     # Create complete 2x2 figure AND individual plots
     print(f"\nCreating dynamics figure and individual plots...")
     
@@ -316,19 +333,9 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
         # Save individual plot
         fig_single.savefig(os.path.join(specific_output_dir, f"{titles[i]}.png"), dpi=300)
         plt.close(fig_single)  # Close to free memory
+        """
 
-        # Plot the firing rates of ALL neurons as a heatmap in another figure
-        plt.figure(figsize=(10, 6))
-        plt.imshow(phi_u.T, aspect='auto', cmap='viridis', origin='lower')
-        plt.colorbar(label='FR')
-        plt.title(f'Firing Rates of all {N} neurons')
-        plt.xlabel('Time')
-        plt.ylabel('Neuron Index')
-        plt.tight_layout()
-        plt.savefig(os.path.join(specific_output_dir, "firing_rates_heatmap.png"), dpi=300) # Save heatmap
-        plt.close()
-
-        logger.info(f"Saved complete figure and individual plots to {specific_output_dir}")
+    logger.info(f"Saved plots to {specific_output_dir}")
 
 # =================================================================
 

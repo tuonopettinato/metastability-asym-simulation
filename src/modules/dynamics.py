@@ -60,6 +60,7 @@ def simulate_ou_process(t_span, dt, tau_zeta, zeta_bar, sigma_zeta, seed=None):
         dzeta = (-zeta[i - 1] +
                  zeta_bar) * dt / tau_zeta + noise_scale * dW / tau_zeta
         zeta[i] = zeta[i - 1] + dzeta
+        # zeta[i] = zeta[i] if zeta[i] > 0 else -zeta[i]
 
     return t, zeta
 
