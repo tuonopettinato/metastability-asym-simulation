@@ -242,8 +242,6 @@ def generate_connectivity_matrix(N,
     if phi_function_type is None:
         phi_function_type = 'sigmoid'  # Default to sigmoid if not specified'
 
-    if phi_function_type == 'tanh':
-        phi = lambda x: tanh_function(x, phi_amplitude, phi_beta)
     elif phi_function_type == 'sigmoid':
         phi = lambda x: sigmoid_function(x, phi_r_m, phi_beta, phi_x_r)
     elif phi_function_type == 'relu':
