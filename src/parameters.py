@@ -13,7 +13,7 @@ import os
 from scipy.__config__ import show
 
 # Network size and pattern parameters
-N = 1200               # Number of neurons (increased for Numba testing)
+N = 1300               # Number of neurons (increased for Numba testing)
 p = 4                 # Number of patterns for symmetric component
 q = 4                  # Number of patterns for asymmetric component (q <= p)
 c = 0.1                # Connection probability (0-1) for Erdős-Rényi model
@@ -59,14 +59,14 @@ apply_er_to_asymmetric = False  # Apply Erdős-Rényi to asymmetric component
 tau = 20.0              # Time constant for neural dynamics
 t_start = 0.0           # Simulation start time
 t_end = 30000.0           # Simulation end time
-dt = 0.2                # Time step for simulation output (increased for efficiency)
+dt = 0.4                # Time step for simulation output (increased for efficiency)
 
 # Performance optimization
 use_numba = True        # Enable Numba JIT compilation for large networks (N > 1000)
 use_g = True  # Whether to apply g function to patterns, default is True in Recanatesi et al.
 
 # Initial condition settings
-init_cond_type = "Random"  # Options: "Random", "Zero", "Memory Pattern", "Near Memory Pattern"
+init_cond_type = "Near Memory Pattern"  # Options: "Random", "Zero", "Memory Pattern", "Near Memory Pattern"
 pattern_idx = 1         # Which pattern to use (0-indexed) if using pattern-based init
 noise_level = 0.5       # Noise level if using "Near Memory Pattern" init
 
@@ -76,9 +76,9 @@ model_type = "recanatesi"   # Dynamics model: "recanatesi" or "brunel"
 
 # Ornstein-Uhlenbeck process parameters for ζ(t)
 use_ou = True          # Whether to use Ornstein-Uhlenbeck process for ζ(t)
-tau_zeta = 60.0          # OU time constant
+tau_zeta = 20.0          # OU time constant
 zeta_bar = 0.65          # OU mean value (0.6 for p = 5, q = 3)
-sigma_zeta = 0.3        # OU noise intensity (0.3 for p = 5, q = 3)
+sigma_zeta = 0.65        # OU noise intensity (0.3 for p = 5, q = 3)
 constant_zeta = 1.     # Constant ζ value when OU is not used
 
 # =============================================================================
@@ -95,12 +95,12 @@ single_dir_name = "simulation_results"
 multiple_dir_name = "multiple_simulations"
 
 # Number of runs
-runs = 5
+runs = 8
 
 # =============================================================================
 # SEED
 # =============================================================================
-seed = 20 # Random seed for reproducibility
+seed = 3 # Random seed for reproducibility
 
 if __name__ == "__main__":
     """Create a txt file in simulation_results"""

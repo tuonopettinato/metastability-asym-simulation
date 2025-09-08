@@ -175,14 +175,14 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
     os.makedirs(npy_dir, exist_ok=True)
     
 
-    # Save OU process
-    zeta_array = np.asarray(zeta)
-    if zeta_array.size == 1:
-        # Save constant zeta as array
-        zeta_full = np.full_like(t, float(zeta_array.item()))
-        np.save(os.path.join(npy_dir, "ou_process.npy"), zeta_full)
-    else:
-        np.save(os.path.join(npy_dir, "ou_process.npy"), zeta_array)
+    # # Save OU process
+    # zeta_array = np.asarray(zeta)
+    # if zeta_array.size == 1:
+    #     # Save constant zeta as array
+    #     zeta_full = np.full_like(t, float(zeta_array.item()))
+    #     np.save(os.path.join(npy_dir, "ou_process.npy"), zeta_full)
+    # else:
+    #     np.save(os.path.join(npy_dir, "ou_process.npy"), zeta_array)
     
     # Calculate and save firing rates
     from modules.activation import sigmoid_function, relu_function
@@ -192,9 +192,9 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
         phi_u = relu_function(u, amplitude=phi_amplitude)
     np.save(os.path.join(npy_dir, "firing_rates.npy"), phi_u)
     
-    # Save pattern overlaps if available
-    if p > 0 and overlaps is not None:
-        np.save(os.path.join(npy_dir, "pattern_overlaps.npy"), overlaps)
+    # # Save pattern overlaps if available
+    # if p > 0 and overlaps is not None:
+    #     np.save(os.path.join(npy_dir, "pattern_overlaps.npy"), overlaps)
     
     plt.figure()
     if p > 0 and overlaps is not None:
@@ -570,7 +570,7 @@ def multiple_simulations():
     np.save(os.path.join(npy_dir, "connectivity_asymmetric.npy"), W_A)
     np.save(os.path.join(npy_dir, "phi_memory_patterns.npy"), phi_eta)
 
-    for seed_index in range(runs):  # Run 5 different simulations
+    for seed_index in range(5, runs):  # Run 5 different simulations
         # transform the number of the seed into a string called addition
         addition = str(seed_index)
         single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params, seed=seed_index, verbose=verbose)

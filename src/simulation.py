@@ -5,18 +5,21 @@ This script allows you to generate connectivity matrices and run simulations.
 
 All parameters are configured in parameters.py - edit that file to change simulation settings.
 """
-from math import log
 import os
+import time
 import numpy as np
 import matplotlib.pyplot as plt
-from sympy import use
 from loguru import logger
 from modules.connectivity import generate_connectivity_matrix, plot_matrix
 from modules.dynamics import simulate_network, calculate_pattern_overlaps
 from modules.energy import compute_energy
+from modules.connectivity import calculate_pattern_correlation_matrix, plot_pattern_correlation_matrix
 
-# Import all parameters from parameters.py
-from parameters import (
+
+def simulation():
+    time_start = time.time()
+    # Import all parameters from parameters.py
+    from parameters import (
     # Connectivity matrix parameters
     N,
     p,
@@ -78,10 +81,6 @@ from parameters import (
     # Seed for reproducibility
     seed
     )
-
-
-
-def simulation():
     """
     Simulation of the network dynamics. 
     """
@@ -92,7 +91,7 @@ def simulation():
         f"Generating connectivity matrices for {N} neurons with {p} patterns..."
     )
 
-    # Generate connectivity matrix with all parameters
+    #====== Generate connectivity matrix with all parameters =====================================
     W_S, W_A, W, eta, phi_eta = generate_connectivity_matrix(
         N=N,
         p=p,
@@ -126,6 +125,14 @@ def simulation():
         max_correlation=max_correlation)
     logger.info("Matrices generated successfully!")
 
+    # Convert to float32 =========================================================================
+    W_S = W_S.astype(np.float32)
+    W_A = W_A.astype(np.float32)
+    W = W.astype(np.float32)
+    eta = eta.astype(np.float32)
+    phi_eta = phi_eta.astype(np.float32)
+    # ============================================================================================
+
     # Display matrix statistics
     if verbose:
         logger.info("\nMatrix statistics:")
@@ -152,8 +159,8 @@ def simulation():
     else:
         None
 
-    # Calculate and print pattern correlation analysis
-    from modules.connectivity import calculate_pattern_correlation_matrix, plot_pattern_correlation_matrix
+    # Calculate and show pattern correlation analysis
+    
     correlation_matrix, actual_max_correlation = calculate_pattern_correlation_matrix(
         eta)
 
@@ -237,6 +244,11 @@ def simulation():
     # Simulation time span
     t_span = (t_start, t_end)
 
+    # Convert initial condition and time span to float32 =========================================
+    initial_condition = initial_condition.astype(np.float32)
+    t_span = (t_start, t_end)
+    # ============================================================================================
+
     # Set up OU parameters
     if use_ou:
         ou_params = {
@@ -269,6 +281,25 @@ def simulation():
         logger.info(f"Numba optimization enabled for {N} neurons")
     elif not use_numba:
         logger.info("Numba optimization disabled")
+
+    # ===============================================
+    # Convert all arrays and scalars to float32
+    u = np.ascontiguousarray(initial_condition, dtype=np.float32)
+    W_S = np.ascontiguousarray(W_S, dtype=np.float32)
+    W_A_sim = np.ascontiguousarray(W_A_sim, dtype=np.float32)
+
+    tau = np.float32(tau)
+    dt = np.float32(dt)
+    phi_r_m = np.float32(phi_r_m)
+    phi_beta = np.float32(phi_beta)
+    phi_x_r = np.float32(phi_x_r)
+    phi_amplitude = np.float32(phi_amplitude)
+    zeta_bar = np.float32(zeta_bar)
+    sigma_zeta = np.float32(sigma_zeta)
+    tau_zeta = np.float32(tau_zeta)
+    constant_zeta = np.float32(constant_zeta)
+
+    # ===============================================
 
     # Run simulation with same φ parameters used in connectivity generation
     t, u, zeta = simulate_network(
@@ -385,12 +416,10 @@ def simulation():
     # Save parameters to npy file
     np.save(os.path.join(npy_dir, "simulation_parameters.npy"), params)
     # Save simulation data as .npy files
-    print(f"\nSaving simulation data to '{npy_dir}'...")
+    logger.info(f"\nSaving simulation data to '{npy_dir}'...")
     np.save(os.path.join(npy_dir, "time.npy"), t)
-    np.save(os.path.join(npy_dir, "neural_currents.npy"), u)
     np.save(os.path.join(npy_dir, "connectivity_symmetric.npy"), W_S)
     np.save(os.path.join(npy_dir, "connectivity_asymmetric.npy"), W_A)
-    np.save(os.path.join(npy_dir, "connectivity_total.npy"), W)
     np.save(os.path.join(npy_dir, "memory_patterns.npy"), eta)
     np.save(os.path.join(npy_dir, "phi_memory_patterns.npy"), phi_eta)
     
@@ -581,7 +610,7 @@ def simulation():
         ax.set_ylabel('ζ(t)')
         ax.grid(True)
     except Exception as e:
-        print(f"Warning: Could not create ζ(t) plot - {e}")
+        logger.error(f"Warning: Could not create ζ(t) plot - {e}")
         ax.text(0.5, 0.5, f'OU Process Error: {e}', ha='center', va='center', transform=ax.transAxes)
         ax.set_title('OU Process')
     
@@ -650,6 +679,9 @@ def simulation():
     else:
         logger.info("Plots not displayed, only saved to files.")
     plt.close('all')  # Close all figures to free memory
+    time_end = time.time()
+    elapsed_time = time_end - time_start
+    logger.info(f"\nTotal execution time: {elapsed_time:.2f} seconds")
 
 if __name__ == "__main__":
     simulation()
