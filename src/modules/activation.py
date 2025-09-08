@@ -3,9 +3,6 @@ modules/activation.py contains activation functions used in the neural network d
 """
 import numpy as np
 
-def tanh_function(x, amplitude=1.0, beta=1.0):
-  """Hyperbolic tangent function with adjustable amplitude and steepness"""
-  return amplitude * np.tanh(beta * x)
 
 def threshold_function(x, amplitude=1.0):
   """Step/threshold function"""

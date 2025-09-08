@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.colors import TwoSlopeNorm
-from modules.activation import tanh_function, threshold_function, relu_function, sigmoid_function, step_function
+from modules.activation import threshold_function, relu_function, sigmoid_function, step_function
 
 
 def _enforce_correlation_constraint(eta_patterns, max_correlation, alpha, pattern_mean, pattern_sigma, max_iterations=100):

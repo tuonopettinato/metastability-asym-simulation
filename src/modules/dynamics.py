@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from sympy import use
 
 # Import activation functions from connectivity module
-from modules.activation import tanh_function, sigmoid_function, relu_function, threshold_function
+from modules.activation import sigmoid_function, relu_function, threshold_function
 
 # ================================================================
 # Ornstein-Uhlenbeck process simulation

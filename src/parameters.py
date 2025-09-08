@@ -13,7 +13,7 @@ import os
 from scipy.__config__ import show
 
 # Network size and pattern parameters
-N = 1300               # Number of neurons (increased for Numba testing)
+N = 1500               # Number of neurons (increased for Numba testing)
 p = 4                 # Number of patterns for symmetric component
 q = 4                  # Number of patterns for asymmetric component (q <= p)
 c = 0.1                # Connection probability (0-1) for Erdős-Rényi model
@@ -95,7 +95,7 @@ single_dir_name = "simulation_results"
 multiple_dir_name = "multiple_simulations"
 
 # Number of runs
-runs = 8
+runs = 10
 
 # =============================================================================
 # SEED
