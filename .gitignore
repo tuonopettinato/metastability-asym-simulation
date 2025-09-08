@@ -9,11 +9,14 @@ __pycache__/
 # .vscode
 .vscode/
 
+# all .npy files
+*.npy
+
 # .npy files contained in simulation_results/npy since they can be large and are often generated
-simulation_results/npy/
+# simulation_results/npy/
 
 # multiple_simulations/
-multiple_simulations/
+# multiple_simulations/
 
 # loaded_results/
 loaded_results/
