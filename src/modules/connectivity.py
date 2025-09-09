@@ -87,23 +87,13 @@ def generate_connectivity_matrix(N,
                                  q,
                                  c,
                                  A_S,
-                                 f_r_m=1.0,
-                                 f_beta=1.0,
-                                 f_x_r=0.0,
-                                 f_type='sigmoid',
                                  f_q=1.0,
                                  f_x=0.0,
-                                 g_r_m=1.0,
-                                 g_beta=1.0,
-                                 g_x_r=0.0,
-                                 g_type='sigmoid',
                                  g_q=1.0,
                                  g_x=0.0,
                                  pattern_mean=0.0,
                                  pattern_sigma=1.0,
                                  apply_sigma_cutoff=True,
-                                 phi_function_type='sigmoid',
-                                 phi_amplitude=1.0,
                                  phi_beta=1.0,
                                  phi_r_m=1.0,
                                  phi_x_r=0.0,
@@ -127,30 +117,20 @@ def generate_connectivity_matrix(N,
         Connection probability (0-1) for Erdös-Rényi model
     A_S : float
         Amplitude parameter for symmetric component
-    f_r_m : float
-        Maximum firing rate for f sigmoid function
-    f_beta : float
-        Steepness parameter for f sigmoid function
-    f_x_r : float
-        Threshold parameter for f sigmoid function
-    f_type : str
-        Type of f function ('sigmoid' or 'step')
     f_q : float
         Step value for f step function
     f_x : float
         Step threshold for f step function
-    g_r_m : float
-        Maximum firing rate for g sigmoid function
-    g_beta : float
-        Steepness parameter for g sigmoid function
-    g_x_r : float
-        Threshold parameter for g sigmoid function
-    g_type : str
-        Type of g function ('sigmoid' or 'step')
     g_q : float
         Step value for g step function
     g_x : float
         Step threshold for g step function
+    phi_beta : float
+        Steepness parameter for sigmoid φ function
+    phi_r_m : float
+        Maximum firing rate for sigmoid φ function  
+    phi_x_r : float
+        Threshold parameter for sigmoid φ function
     pattern_mean : float
         Mean of the Gaussian distribution for memory patterns
     pattern_sigma : float
@@ -186,6 +166,8 @@ def generate_connectivity_matrix(N,
         Total connectivity matrix (W_S + W_A)
     eta : ndarray
         Memory patterns used to generate the connectivity matrices
+    eta_raw : ndarray
+        Raw memory patterns before applying φ function
     """
     # Generate random memory patterns from Gaussian distribution
     eta_raw = np.random.normal(pattern_mean, pattern_sigma, size=(p, N))
@@ -226,29 +208,12 @@ def generate_connectivity_matrix(N,
     # Calculate N_S (average number of connections per neuron)
     N_S = N * c
 
-    # Set up f and g functions (for pattern interaction in connectivity matrix)
-    # f and g can be either sigmoid or step functions with different parameters
-    if f_type == 'sigmoid':
-        f = lambda x: sigmoid_function(x, f_r_m, f_beta, f_x_r)
-    else:  # step function
-        f = lambda x: step_function(x, f_q, f_x)
-
-    if g_type == 'sigmoid':
-        g = lambda x: sigmoid_function(x, g_r_m, g_beta, g_x_r)
-    else:  # step function
-        g = lambda x: step_function(x, g_q, g_x)
-
-    # Set up φ function
-    if phi_function_type is None:
-        phi_function_type = 'sigmoid'  # Default to sigmoid if not specified'
-
-    elif phi_function_type == 'sigmoid':
-        phi = lambda x: sigmoid_function(x, phi_r_m, phi_beta, phi_x_r)
-    elif phi_function_type == 'relu':
-        phi = lambda x: relu_function(x, phi_amplitude)
-    else:  # threshold
-        phi = lambda x: threshold_function(x, phi_amplitude)
-
+    # Set up f and g functions, which are both step functions
+    f = lambda x: step_function(x, f_q, f_x)
+    g = lambda x: step_function(x, g_q, g_x)
+    # Set up φ function, which is a sigmoid
+    phi = lambda x: sigmoid_function(x, phi_r_m, phi_beta, phi_x_r)
+    
     if apply_phi_to_patterns:
         eta = np.zeros_like(eta_raw)
         for mu in range(p):

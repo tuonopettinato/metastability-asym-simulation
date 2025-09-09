@@ -18,8 +18,6 @@ from modules.activation import derivative_sigmoid_function, derivative_relu_func
 
 def compute_energy(
     W, h,
-    phi_function_type="sigmoid",
-    phi_amplitude=1.0,
     phi_beta=1.5,
     phi_r_m=30.0,
     phi_x_r=2.0,
@@ -33,8 +31,7 @@ def compute_energy(
     Args:
         W: (N x N) connectivity matrix
         h: (M x N) array of firing rates (M states), or (N,) single state
-        phi_function_type: "sigmoid" or "relu"
-        phi_amplitude, phi_beta, phi_r_m, phi_x_r: activation inverse parameters
+        phi_beta, phi_r_m, phi_x_r: activation inverse parameters
         num_interp_points: resolution of lookup table
         activation_term: whether to include activation term in energy computation
 
@@ -50,16 +47,9 @@ def compute_energy(
     M, N = h.shape
 
     # Select inverse function and clipping range
-    if phi_function_type == "sigmoid":
-        inv_func = lambda v: inverse_sigmoid_function(v, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
-        h_clip_min = 1e-4
-        h_clip_max = phi_r_m - 1e-4
-    elif phi_function_type == "relu":
-        inv_func = lambda v: inverse_relu_function(v, amplitude=phi_amplitude)
-        h_clip_min = 0.0
-        h_clip_max = phi_amplitude * 1.5
-    else:
-        raise ValueError("Unsupported phi_function_type")
+    inv_func = lambda v: inverse_sigmoid_function(v, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
+    h_clip_min = 1e-4
+    h_clip_max = phi_r_m - 1e-4
 
     # Precompute lookup table
     x_vals = np.linspace(h_clip_min, h_clip_max, num_interp_points)

@@ -5,10 +5,10 @@ different models and activation functions.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from sympy import use
+from sympy import N, use
 
 # Import activation functions from connectivity module
-from modules.activation import sigmoid_function, relu_function, threshold_function
+from modules.activation import sigmoid_function, relu_function, step_function
 
 # ================================================================
 # Ornstein-Uhlenbeck process simulation
@@ -244,13 +244,11 @@ def simulate_network(W_S,
                      t_span,
                      dt,
                      tau,
-                     activation_type,
-                     activation_param,
                      initial_condition=None,
                      use_ou=False,
                      ou_params=None,
                      r_m=1.0,
-                     theta=0.0,
+                     beta=0.0,
                      x_r=0.0,
                      model_type="recanatesi",
                      constant_zeta=None,
@@ -269,8 +267,6 @@ def simulate_network(W_S,
         Time step for simulation output
     tau : float
         Time constant for neural dynamics
-    activation_type : str
-        Type of activation function ('sigmoid', 'relu')
     activation_param : float
         Activation parameter (beta for sigmoid, ignored for relu)
     initial_condition : ndarray or None
@@ -281,7 +277,7 @@ def simulate_network(W_S,
         Parameters for OU process (tau_zeta, zeta_bar, sigma_zeta)
     r_m : float
         Maximum firing rate parameter for sigmoid function
-    theta : float
+    beta : float
         Inflection point for sigmoid function
     x_r : float
         Threshold parameter for sigmoid function
@@ -309,9 +305,9 @@ def simulate_network(W_S,
     dt = np.float32(dt)
     tau = np.float32(tau)
     r_m = np.float32(r_m)
-    theta = np.float32(theta)
     x_r = np.float32(x_r)
-    activation_param = np.float32(activation_param)
+    beta = np.float32(beta)
+    constant_zeta = (np.float32(constant_zeta)) if constant_zeta is not None else np.float32(1.0)
 
     # Ensure matrices are float32
     W_S = W_S.astype(np.float32, copy=False)
@@ -344,26 +340,19 @@ def simulate_network(W_S,
             if mem_info['total_gb'] > 16:
                 print("Warning: High memory usage detected. Consider reducing simulation time or using smaller networks.")
 
-            return _simulate_network_numba_wrapper(W_S, W_A, t_span, dt, tau, activation_type,
-                                           activation_param, initial_condition, use_ou,
-                                           ou_params, r_m, x_r, model_type, constant_zeta)
+            return _simulate_network_numba_wrapper(W_S, W_A, t_span, dt, tau,
+                                           initial_condition, use_ou,
+                                           ou_params, r_m, beta, x_r, model_type, constant_zeta)
         except ImportError:
             print("Numba not available, falling back to standard simulation...")
             use_numba = False
 
-    # Choose activation function with parameters
-    if activation_type == 'sigmoid':
-        def activation_fn(x):
-            return sigmoid_function(x.astype(np.float32),
-                                    r_m=r_m,
-                                    beta=activation_param,
-                                    x_r=x_r).astype(np.float32)
-    elif activation_type == 'relu':
-        def activation_fn(x):
-            return relu_function(x.astype(np.float32),
-                                 amplitude=np.float32(1.0)).astype(np.float32)
-    else:
-        raise ValueError(f"Unknown activation type: {activation_type}. Choose 'sigmoid' or 'relu'.")
+    # Define activation function (sigmoid)
+    def activation_fn(x):
+        return sigmoid_function(x.astype(np.float32),
+                                r_m=r_m,
+                                beta=beta,
+                                x_r=x_r).astype(np.float32)
 
     # Generate time points (float32)
     t = np.arange(t_span[0], t_span[1], dt, dtype=np.float32)
@@ -417,9 +406,8 @@ def simulate_network(W_S,
 # Wrapper function for Numba-optimized simulations
 # ================================================================
 
-def _simulate_network_numba_wrapper(W_S, W_A, t_span, dt, tau, activation_type,
-                                   activation_param, initial_condition, use_ou,
-                                   ou_params, r_m, x_r, model_type, constant_zeta):
+def _simulate_network_numba_wrapper(W_S, W_A, t_span, dt, tau, initial_condition, use_ou,
+                                   ou_params, r_m, beta, x_r, model_type, constant_zeta):
     """Wrapper function to call Numba-optimized simulation"""
     from modules.numba_dynamics import simulate_network_numba, simulate_ou_process_numba
 
@@ -427,7 +415,7 @@ def _simulate_network_numba_wrapper(W_S, W_A, t_span, dt, tau, activation_type,
     dt = np.float32(dt)
     tau = np.float32(tau)
     r_m = np.float32(r_m)
-    activation_param = np.float32(activation_param)
+    beta = np.float32(beta)
     x_r = np.float32(x_r)
     W_S = W_S.astype(np.float32, copy=False)
     W_A = W_A.astype(np.float32, copy=False)
@@ -455,17 +443,12 @@ def _simulate_network_numba_wrapper(W_S, W_A, t_span, dt, tau, activation_type,
         zeta_array = np.full(n_steps, zeta_value, dtype=np.float32)
         zeta_output = zeta_value
 
-    # Convert string parameters to integers for Numba
-    activation_type_int = 0 if activation_type == 'sigmoid' else 1
+    # Map model type to integer for Numba
     model_type_int = 0 if model_type == 'recanatesi' else 1
-
-    # Set activation parameters
-    amplitude = np.float32(1.0 if activation_type == 'relu' else activation_param)
 
     # Run Numba-optimized simulation
     u = simulate_network_numba(
-        W_S, W_A, initial_condition, n_steps, dt, tau,
-        activation_type_int, r_m, activation_param, x_r, amplitude,
+        W_S, W_A, initial_condition, n_steps, dt, tau, r_m, beta, x_r,
         model_type_int, zeta_array
     ).astype(np.float32)
 
@@ -475,7 +458,7 @@ def _simulate_network_numba_wrapper(W_S, W_A, t_span, dt, tau, activation_type,
 # Calculate overlaps between network states and memory patterns
 # ================================================================
 
-def calculate_pattern_overlaps(u, patterns, phi_function_type, phi_params, g_function_type, g_params, use_numba=True, use_g=True):
+def calculate_pattern_overlaps(u, patterns, phi_params, g_params, use_numba=True, use_g=True):
     """Calculate covariance-based overlaps between network states and memory patterns
     
     Overlap definition: cov(g(φ(η)), r) / sqrt(var(g(φ(η))) * var(r))
@@ -493,12 +476,8 @@ def calculate_pattern_overlaps(u, patterns, phi_function_type, phi_params, g_fun
         Neural states, shape (n_timepoints, n_neurons)
     patterns : ndarray
         Memory patterns, shape (n_patterns, n_neurons)
-    phi_function_type : str
-        Type of phi activation function ('sigmoid' or 'relu')
     phi_params : dict
         Parameters for phi function (r_m, beta, x_r for sigmoid; amplitude for relu)
-    g_function_type : str
-        Type of g function ('sigmoid' or 'step')
     g_params : dict
         Parameters for g function
     use_numba : bool
@@ -533,45 +512,26 @@ def calculate_pattern_overlaps(u, patterns, phi_function_type, phi_params, g_fun
                 phi_params.get('r_m', 1.0),
                 phi_params.get('beta', 1.0), 
                 phi_params.get('x_r', 0.0),
-                phi_params.get('amplitude', 1.0)
             ], dtype=np.float32)
             
             g_params_array = np.array([
-                g_params.get('r_m', 1.0),
-                g_params.get('beta', 1.0),
-                g_params.get('x_r', 0.0),
                 g_params.get('q', 1.0),
                 g_params.get('x', 0.0)
             ], dtype=np.float32)
-            
-            phi_type_int = 0 if phi_function_type == 'sigmoid' else 1
-            g_type_int = 0 if g_function_type == 'sigmoid' else 1
+        
             
             return calculate_pattern_overlaps_numba(u, patterns, phi_params_array, g_params_array,
-                                                   phi_type_int, g_type_int, use_g=use_g)
+                                                    use_g=use_g)
         except ImportError:
             print("Numba not available for overlap calculation, using standard method...")
 
     # --- Validate phi_params and g_params ---
-    if phi_function_type == 'sigmoid':
-        required_phi = ['r_m', 'beta', 'x_r']
-        missing_phi = [p for p in required_phi if p not in phi_params]
-        if missing_phi:
-            raise ValueError(f"Missing required phi_params for sigmoid: {missing_phi}")
-    elif phi_function_type == 'relu':
-        if 'amplitude' not in phi_params:
-            raise ValueError("Missing required phi_params for relu: ['amplitude']")
-
-    if g_function_type == 'sigmoid':
-        required_g = ['r_m', 'beta', 'x_r']
-        missing_g = [p for p in required_g if p not in g_params]
-        if missing_g:
-            raise ValueError(f"Missing required g_params for sigmoid: {missing_g}")
-    elif g_function_type == 'step':
-        required_g = ['q', 'x']
-        missing_g = [p for p in required_g if p not in g_params]
-        if missing_g:
-            raise ValueError(f"Missing required g_params for step: {missing_g}")
+    if 'r_m' not in phi_params or 'beta' not in phi_params or 'x_r' not in phi_params:
+        raise ValueError("Missing required phi_params for sigmoid: ['r_m', 'beta', 'x_r']")
+    else: None  # all good
+    if 'q' not in g_params or 'x' not in g_params:
+        raise ValueError("Missing required g_params for step: ['q', 'x']")
+    else: None  # all good
 
     # Initialize overlaps array (float32)
     overlaps = np.zeros((n_timepoints, n_patterns), dtype=np.float32)
@@ -579,40 +539,25 @@ def calculate_pattern_overlaps(u, patterns, phi_function_type, phi_params, g_fun
     # Pre-compute φ(η) for all patterns
     phi_patterns = np.zeros_like(patterns, dtype=np.float32)
     for p in range(n_patterns):
-        if phi_function_type == 'sigmoid':
-            phi_patterns[p, :] = sigmoid_function(patterns[p, :].astype(np.float32),
-                                                  r_m=np.float32(phi_params['r_m']),
-                                                  beta=np.float32(phi_params['beta']),
-                                                  x_r=np.float32(phi_params['x_r'])).astype(np.float32)
-        else:  # relu
-            phi_patterns[p, :] = relu_function(patterns[p, :].astype(np.float32),
-                                               amplitude=np.float32(phi_params['amplitude'])).astype(np.float32)
+        phi_patterns[p, :] = sigmoid_function(patterns[p, :].astype(np.float32),
+                                                r_m=np.float32(phi_params['r_m']),
+                                                beta=np.float32(phi_params['beta']),
+                                                x_r=np.float32(phi_params['x_r'])).astype(np.float32)
 
     # Pre-compute g(φ(η)) for all patterns
     g_phi_patterns = np.zeros_like(phi_patterns, dtype=np.float32)
     for p in range(n_patterns):
-        if g_function_type == 'sigmoid':
-            g_phi_patterns[p, :] = sigmoid_function(phi_patterns[p, :].astype(np.float32),
-                                                    r_m=np.float32(g_params['r_m']),
-                                                    beta=np.float32(g_params['beta']),
-                                                    x_r=np.float32(g_params['x_r'])).astype(np.float32)
-        else:  # step
-            from modules.activation import step_function
-            g_phi_patterns[p, :] = step_function(phi_patterns[p, :].astype(np.float32),
+        g_phi_patterns[p, :] = step_function(phi_patterns[p, :].astype(np.float32),
                                                  q_f=np.float32(g_params['q']),
                                                  x_f=np.float32(g_params['x'])).astype(np.float32)
 
     # Compute overlaps for each timepoint and pattern
     for t_idx in range(n_timepoints):
         state = u[t_idx, :]
-        if phi_function_type == 'sigmoid':
-            r = sigmoid_function(state.astype(np.float32),
-                                 r_m=np.float32(phi_params['r_m']),
-                                 beta=np.float32(phi_params['beta']),
-                                 x_r=np.float32(phi_params['x_r'])).astype(np.float32)
-        else:
-            r = relu_function(state.astype(np.float32),
-                              amplitude=np.float32(phi_params['amplitude'])).astype(np.float32)
+        r = sigmoid_function(state.astype(np.float32),
+                                r_m=np.float32(phi_params['r_m']),
+                                beta=np.float32(phi_params['beta']),
+                                x_r=np.float32(phi_params['x_r'])).astype(np.float32)
 
         for p in range(n_patterns):
             g_phi_eta = g_phi_patterns[p, :]
@@ -647,9 +592,7 @@ def plot_network_dynamics(t,
                           neuron_indices=None,
                           max_display=10,
                           patterns=None,
-                          phi_function_type='sigmoid',
                           phi_params=None,
-                          g_function_type='step',
                           g_params=None):
     """Plot network dynamics results
     
@@ -667,12 +610,8 @@ def plot_network_dynamics(t,
         Maximum number of neurons to display
     patterns : ndarray or None
         Memory patterns, shape (n_patterns, n_neurons)
-    phi_function_type : str
-        Type of phi activation function
     phi_params : dict
         Parameters for phi function
-    g_function_type : str
-        Type of g function
     g_params : dict
         Parameters for g function
     
@@ -735,7 +674,7 @@ def plot_network_dynamics(t,
 
     # Plot pattern overlaps if provided
     if has_patterns:
-        overlaps = calculate_pattern_overlaps(u, patterns, phi_function_type, phi_params, g_function_type, g_params)
+        overlaps = calculate_pattern_overlaps(u, patterns, phi_params, g_params)
         ax_overlap = ax3 if n_plots == 3 else ax2 if n_plots == 2 else None
         if ax_overlap is not None:
             for p in range(overlaps.shape[1]):

@@ -12,6 +12,7 @@ from torch import mul
 
 from modules.connectivity import generate_connectivity_matrix, plot_matrix
 from modules.dynamics import simulate_network, calculate_pattern_overlaps
+from modules.activation import sigmoid_function, relu_function
 
 # ================ Simulation Parameters ================ 
 
@@ -23,21 +24,11 @@ from parameters import (
     q,
     c,
     A_S,
-    phi_function_type,
-    phi_amplitude,
     phi_beta,
     phi_r_m,
     phi_x_r,
-    f_type,
-    f_r_m,
-    f_beta,
-    f_x_r,
     f_q,
     f_x,
-    g_type,
-    g_r_m,
-    g_beta,
-    g_x_r,
     g_q,
     g_x,
     pattern_mean,
@@ -126,14 +117,11 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
         t_span=t_span,
         dt=dt,
         tau=tau,
-        activation_type=phi_function_type,
-        activation_param=phi_beta
-        if phi_function_type == "sigmoid" else phi_amplitude,
         initial_condition=initial_condition,
         use_ou=use_ou,
         ou_params=ou_params,
         r_m=phi_r_m,
-        theta=0.0,
+        beta=0.0,
         x_r=phi_x_r,
         model_type=model_type,
         constant_zeta=constant_zeta if not use_ou else None,
@@ -149,23 +137,17 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
             'r_m': phi_r_m,
             'beta': phi_beta,
             'x_r': phi_x_r,
-            'amplitude': phi_amplitude
         }
 
         # Prepare g function parameters
         g_params = {
-            'r_m': g_r_m,
-            'beta': g_beta,
-            'x_r': g_x_r,
             'q': g_q,
             'x': g_x
         }
 
         overlaps = calculate_pattern_overlaps(u,
                                               eta,
-                                              phi_function_type,
                                               phi_params,
-                                              g_type,
                                               g_params,
                                               use_numba=use_numba,
                                               use_g=use_g)
@@ -185,11 +167,7 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
     #     np.save(os.path.join(npy_dir, "ou_process.npy"), zeta_array)
     
     # Calculate and save firing rates
-    from modules.activation import sigmoid_function, relu_function
-    if phi_function_type == "sigmoid":
-        phi_u = sigmoid_function(u, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
-    else:  # relu
-        phi_u = relu_function(u, amplitude=phi_amplitude)
+    phi_u = sigmoid_function(u, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
     np.save(os.path.join(npy_dir, "firing_rates.npy"), phi_u)
     
     # # Save pattern overlaps if available
@@ -365,23 +343,13 @@ def multiple_simulations():
         q=q,
         c=c,
         A_S=A_S,
-        f_r_m=f_r_m,
-        f_beta=f_beta,
-        f_x_r=f_x_r,
-        f_type=f_type,
         f_q=f_q,
         f_x=f_x,
-        g_r_m=g_r_m,
-        g_beta=g_beta,
-        g_x_r=g_x_r,
-        g_type=g_type,
         g_q=g_q,
         g_x=g_x,
         pattern_mean=pattern_mean,
         pattern_sigma=pattern_sigma,
         apply_sigma_cutoff=apply_sigma_cutoff,
-        phi_function_type=phi_function_type,
-        phi_amplitude=phi_amplitude,
         phi_beta=phi_beta,
         phi_r_m=phi_r_m,
         phi_x_r=phi_x_r,
@@ -490,7 +458,7 @@ def multiple_simulations():
     logger.info(f"\nRunning {model_type} dynamics simulation...")
     logger.info(f"Time span: {t_start} to {t_end}, τ = {tau}")
     logger.info(
-        f"φ function: {phi_function_type} (β={phi_beta}, r_m={phi_r_m}, x_r={phi_x_r})"
+        f"φ function: sigmoid (β={phi_beta}, r_m={phi_r_m}, x_r={phi_x_r})"
     ) 
 
     if verbose:
@@ -512,21 +480,11 @@ def multiple_simulations():
         'q': q,
         'c': c,
         'A_S': A_S,
-        'phi_function_type': phi_function_type,
-        'phi_amplitude': phi_amplitude,
         'phi_beta': phi_beta,
         'phi_r_m': phi_r_m,
         'phi_x_r': phi_x_r,
-        'f_type': f_type,
-        'f_r_m': f_r_m,
-        'f_beta': f_beta,
-        'f_x_r': f_x_r,
         'f_q': f_q,
         'f_x': f_x,
-        'g_type': g_type,
-        'g_r_m': g_r_m,
-        'g_beta': g_beta,
-        'g_x_r': g_x_r,
         'g_q': g_q,
         'g_x': g_x,
         'pattern_mean': pattern_mean,
