@@ -80,12 +80,14 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
     addition is a string that is used to save and identify the simulation run
     """
     np.random.seed(seed)  # for reproducibility
-    # Create output directory and show error message if addition is not provided
+    # Create output directories and show error message otherwise
     try:
-        specific_output_dir = os.path.join(os.path.dirname(__file__), "..", multiple_dir_name, addition)
+        plot_dir = os.path.join(os.path.dirname(__file__), "..", multiple_dir_name, 'plots')
+        npy_dir = os.path.join(os.path.dirname(__file__), "..", multiple_dir_name, "npy")
     except Exception as e:
         logger.error(f"Error occurred while setting output directory: {e}")
-    os.makedirs(specific_output_dir, exist_ok=True)
+    os.makedirs(plot_dir, exist_ok=True)
+    os.makedirs(npy_dir, exist_ok=True)
 
     # Set up initial condition with proper noise calculation
     if init_cond_type == "Random":
@@ -151,11 +153,6 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
                                               g_params,
                                               use_numba=use_numba,
                                               use_g=use_g)
-        
-    # Create data storage directory
-    npy_dir = os.path.join(specific_output_dir, "npy")
-    os.makedirs(npy_dir, exist_ok=True)
-    
 
     # # Save OU process
     # zeta_array = np.asarray(zeta)
@@ -168,7 +165,7 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
     
     # Calculate and save firing rates
     phi_u = sigmoid_function(u, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
-    np.save(os.path.join(npy_dir, "firing_rates.npy"), phi_u)
+    np.save(os.path.join(npy_dir, f"firing_rates.npy"), phi_u)
     
     # # Save pattern overlaps if available
     # if p > 0 and overlaps is not None:
@@ -187,133 +184,10 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
         plt.text(0.5, 0.5, 'No patterns to display', ha='center', va='center', transform=plt.gca().transAxes)
         plt.title('Pattern Overlaps')
     plt.tight_layout()
-    plt.savefig(os.path.join(specific_output_dir, "pattern_overlaps.png"), dpi=300)
+    plt.savefig(os.path.join(plot_dir, f'{"pattern_overlaps_"}{addition}{".png"}'), dpi=300)
     plt.close()
 
-
-    """
-    # Create complete 2x2 figure AND individual plots
-    print(f"\nCreating dynamics figure and individual plots...")
-    
-    # Create 2x2 subplot figure
-    fig, axs = plt.subplots(2, 2, figsize=(15, 10))
-    
-    # 1. Neural Currents (top-left)
-    n_plot = min(n_display, N)
-    ax = axs[0, 0]
-    for i in range(n_plot):
-        ax.plot(t, u[:, i], alpha=0.7, label=f'u_{i+1}')
-    ax.set_xlabel('Time')
-    ax.set_ylabel('Current')
-    ax.set_title(f'Neural Currents $u_i$ (first {n_plot} neurons)')
-    ax.grid(True)
-    if n_plot <= 5:
-        ax.legend()
-
-    # 2. Firing Rates (top-right)
-    ax = axs[0, 1]
-    for i in range(n_plot):
-        ax.plot(t, phi_u[:, i], alpha=0.7, label=f'φ(u_{i+1})')
-    ax.set_xlabel('Time')
-    ax.set_ylabel('FR')
-    ax.set_title(f'Firing Rates φ($u_i$) (first {n_plot} neurons)')
-    ax.grid(True)
-    if n_plot <= 5:
-        ax.legend()
-
-    # 3. Pattern Overlaps (bottom-left)
-    ax = axs[1, 0]
-    if p > 0 and overlaps is not None:
-        for i in range(p):
-            ax.plot(t, overlaps[:, i], label=f'Pattern {i+1}', linewidth=2)
-        ax.set_xlabel('Time')
-        ax.set_ylabel('Pattern Overlap')
-        ax.set_title(f'Memory Pattern Overlaps (A={A_S}, seed = {seed})')
-        ax.grid(True)
-        ax.legend()
-    else:
-        ax.text(0.5, 0.5, 'No patterns to display', ha='center', va='center', transform=ax.transAxes)
-        ax.set_title('Pattern Overlaps')
-
-    # 4. OU Process (bottom-right)
-    ax = axs[1, 1]
-    try:
-        if zeta_array.size == 1:
-            # Constant zeta case
-            zeta_val = float(zeta_array.item())
-            ax.axhline(y=zeta_val, color='r', linestyle='-', linewidth=2)
-            ax.set_ylim([zeta_val - 0.1, zeta_val + 0.1])
-            ax.set_title(f'Control Signal ζ(t) = {zeta_val:.2f} (constant)')
-        else:
-            # Time-varying zeta case with OU parameters in legend
-            if use_ou and ou_params is not None:
-                # Include OU parameters in legend
-                tau_zeta_val = ou_params.get('tau_zeta', tau_zeta)
-                zeta_bar_val = ou_params.get('zeta_bar', zeta_bar)
-                sigma_zeta_val = ou_params.get('sigma_zeta', sigma_zeta)
-                legend_label = f'ζ(t) ($τ_ζ$={tau_zeta_val:.1f}, $\\bar{{ζ}}$={zeta_bar_val:.1f}, $σ_ζ$={sigma_zeta_val:.2f})'
-                ax.set_title('Ornstein-Uhlenbeck Control Signal ζ(t)')
-            else:
-                legend_label = 'ζ(t)'
-                ax.set_title('Control Signal ζ(t)')
-            ax.plot(t, zeta_array, color='red', linewidth=1.5, label=legend_label)
-            ax.legend()
-
-        ax.set_xlabel('Time')
-        ax.set_ylabel('ζ(t)')
-        ax.grid(True)
-    except Exception as e:
-        print(f"Warning: Could not create ζ(t) plot - {e}")
-        ax.text(0.5, 0.5, f'OU Process Error: {e}', ha='center', va='center', transform=ax.transAxes)
-        ax.set_title('OU Process')
-    
-    plt.tight_layout()
-    
-    # Save complete 2x2 figure
-    complete_fig_path = os.path.join(specific_output_dir, "complete_simulation_results.png")
-    plt.savefig(complete_fig_path, dpi=300)
-    
-    # Extract and save individual plots from the 2x2 figure
-    titles = ['neural_currents', 'firing_rates', 'pattern_overlaps', 'ou_process']
-    
-    for i, ax in enumerate(axs.flat):
-        fig_single, ax_single = plt.subplots(figsize=(10, 6))
-        
-        # Copy all lines from original subplot
-        for line in ax.get_lines():
-            ax_single.plot(line.get_xdata(), line.get_ydata(), 
-                          label=line.get_label(), color=line.get_color(),
-                          alpha=line.get_alpha() if line.get_alpha() is not None else 1.0, 
-                          linewidth=line.get_linewidth())
-        
-        # Copy title, labels, and legend
-        ax_single.set_title(ax.get_title())
-        ax_single.set_xlabel(ax.get_xlabel())
-        ax_single.set_ylabel(ax.get_ylabel())
-        ax_single.grid(True)
-        
-        # Add legend if original had one
-        if ax.get_legend() is not None:
-            ax_single.legend()
-        
-        # Copy text annotations if any
-        for text in ax.texts:
-            ax_single.text(text.get_position()[0], text.get_position()[1], 
-                          text.get_text(), ha=text.get_ha(), va=text.get_va(),
-                          transform=ax_single.transAxes if text.get_transform() == ax.transAxes else ax_single.transData)
-        
-        # Copy axis limits for proper scaling
-        ax_single.set_xlim(ax.get_xlim())
-        ax_single.set_ylim(ax.get_ylim())
-        
-        plt.tight_layout()
-        
-        # Save individual plot
-        fig_single.savefig(os.path.join(specific_output_dir, f"{titles[i]}.png"), dpi=300)
-        plt.close(fig_single)  # Close to free memory
-        """
-
-    logger.info(f"Saved plots to {specific_output_dir}")
+    logger.info(f"Saved plots to {plot_dir}")
 
 # =================================================================
 
@@ -515,7 +389,7 @@ def multiple_simulations():
         'seed': seed
     }
     # Save parameters to npy file
-    np.save(os.path.join(npy_dir, "simulation_parameters.npy"), params)
+    np.save(os.path.join(npy_dir, f'{"simulation_parameters_"}{addition}{".npy"}'), params)
     # Save parameters to txt file
     with open(os.path.join(output_dir, "parameters.txt"), "w") as f:
         for key, value in params.items():
@@ -524,9 +398,9 @@ def multiple_simulations():
 
     # Save simulation data as .npy files
     print(f"\nSaving simulation data to '{npy_dir}'...")
-    np.save(os.path.join(npy_dir, "connectivity_symmetric.npy"), W_S)
-    np.save(os.path.join(npy_dir, "connectivity_asymmetric.npy"), W_A)
-    np.save(os.path.join(npy_dir, "phi_memory_patterns.npy"), phi_eta)
+    np.save(os.path.join(npy_dir, f'{"connectivity_symmetric_"}{addition}{".npy"}'), W_S)
+    np.save(os.path.join(npy_dir, f'{"connectivity_asymmetric_"}{addition}{".npy"}'), W_A)
+    np.save(os.path.join(npy_dir, f'{"phi_memory_patterns_"}{addition}{".npy"}'), phi_eta)
 
     for seed_index in range(8, runs):  # Run multiple simulations
         # transform the number of the seed into a string called addition
