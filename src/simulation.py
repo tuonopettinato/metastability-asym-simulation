@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from loguru import logger
 from modules.connectivity import generate_connectivity_matrix, plot_matrix
-from modules.dynamics import simulate_network, calculate_pattern_overlaps
+from modules.dynamics import simulate_network, calculate_pattern_overlaps, initial_condition_creator
 from modules.activation import sigmoid_function, relu_function
 from modules.energy import compute_energy
 from modules.connectivity import calculate_pattern_correlation_matrix, plot_pattern_correlation_matrix
@@ -186,41 +186,14 @@ def simulation():
         )
 
     # Set up initial condition with proper noise calculation 
-    if init_cond_type == "Random":
-        initial_condition = np.random.normal(0, 0.1, N)
-        logger.info("Initialized with random values.")
-    elif init_cond_type == "Zero":
-        initial_condition = np.zeros(N)
-        logger.info("Initialized with zeros.")
-    elif init_cond_type == "Memory Pattern":
-        if p > 0:
-            pattern = eta[pattern_idx % p]
-            initial_condition = pattern.copy()
-            logger.info(
-                f"Initialized with memory pattern {(pattern_idx % p)+1} of {p}"
-            )
-        else:
-            initial_condition = np.random.normal(0, 0.1, N)
-            logger.info("No patterns available. Using random initialization.")
-    else:  # Near Memory Pattern
-        if p > 0:
-            pattern = eta[pattern_idx % p] # Getting the pattern based on index
-            # Add noise scaled relative to pattern magnitude
-            pattern_std = np.std(pattern)
-            noise = np.random.normal(0, noise_level * pattern_std, N)
-            initial_condition = pattern + noise
-
-            # Calculate similarity
-            norm_pattern = pattern / np.linalg.norm(pattern)
-            norm_initial = initial_condition / np.linalg.norm(
-                initial_condition)
-            similarity = np.dot(norm_pattern, norm_initial)
-            logger.info(
-                f"Initialized near memory pattern {(pattern_idx % p)+1} of {p}. Similarity: {similarity:.4f}"
-            )
-        else:
-            initial_condition = np.random.normal(0, 0.1, N)
-            logger.info("No patterns available. Using random initialization.")
+    initial_condition = initial_condition_creator(
+        init_cond_type=init_cond_type,
+        N=N,
+        p=p,
+        eta=eta,
+        pattern_idx=pattern_idx,
+        noise_level=noise_level
+    )
 
     # Simulation time span
     t_span = (t_start, t_end)
@@ -281,6 +254,19 @@ def simulation():
 
     # ===============================================
 
+    # Create data storage directory
+    npy_dir = os.path.join(output_dir, "npy")
+    os.makedirs(npy_dir, exist_ok=True)
+
+    # Saving connectivity matrices and patterns as .npy files
+
+    np.save(os.path.join(npy_dir, "connectivity_symmetric.npy"), W_S)
+    np.save(os.path.join(npy_dir, "connectivity_asymmetric.npy"), W_A)
+    np.save(os.path.join(npy_dir, "connectivity_total.npy"), W)
+    np.save(os.path.join(npy_dir, "memory_patterns.npy"), eta)
+    np.save(os.path.join(npy_dir, "phi_memory_patterns.npy"), phi_eta)
+    logger.info(f"Saved connectivity matrices and memory patterns to '{npy_dir}'")
+
     # Run simulation with same φ parameters used in connectivity generation
     t, u, zeta = simulate_network(
         W_S=W_S,
@@ -329,9 +315,7 @@ def simulation():
             f" \nHighest final overlap: {np.max(overlaps[-1, :]):.4f} (Pattern {np.argmax(overlaps[-1, :]) + 1})"
         )
         
-    # Create data storage directory
-    npy_dir = os.path.join(output_dir, "npy")
-    os.makedirs(npy_dir, exist_ok=True)
+
     
     # Save simulation parameters
     params = {
@@ -379,10 +363,6 @@ def simulation():
     # Save simulation data as .npy files
     logger.info(f"\nSaving simulation data to '{npy_dir}'...")
     np.save(os.path.join(npy_dir, "time.npy"), t)
-    np.save(os.path.join(npy_dir, "connectivity_symmetric.npy"), W_S)
-    np.save(os.path.join(npy_dir, "connectivity_asymmetric.npy"), W_A)
-    np.save(os.path.join(npy_dir, "memory_patterns.npy"), eta)
-    np.save(os.path.join(npy_dir, "phi_memory_patterns.npy"), phi_eta)
     
     # Save OU process
     zeta_array = np.asarray(zeta)

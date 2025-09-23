@@ -3,16 +3,18 @@ This file intends to simulate the dynamics of the NN with many different initial
 """
 
 import os
+import time
 
 import numpy as np
 from loguru import logger
 from matplotlib import pyplot as plt
-from torch import mul
+from sympy import im
+from torch import inverse, mul
 
 
 from modules.connectivity import generate_connectivity_matrix, plot_matrix
-from modules.dynamics import simulate_network, calculate_pattern_overlaps
-from modules.activation import sigmoid_function, relu_function
+from modules.dynamics import simulate_network, calculate_pattern_overlaps, initial_condition_creator 
+from modules.activation import sigmoid_function, relu_function, inverse_sigmoid_function
 
 # ================ Simulation Parameters ================ 
 
@@ -67,6 +69,9 @@ from parameters import (
 
     # number of runs
     runs,
+    # Import connectivity or not
+    import_connectivity,
+    connectivity_dir,
     # Seed for reproducibility
     seed
     )
@@ -75,40 +80,23 @@ from parameters import (
 
 def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params, seed = seed, verbose = False):
     """
-    Single simulation of the network dynamics. 
+    Single simulation of the network dynamics.
     seed and addition are needed in order to run multiple simulations
     addition is a string that is used to save and identify the simulation run
     """
+    time_start = time.time() # Start time measurement
     np.random.seed(seed)  # for reproducibility
-    # Create output directory and show error message if addition is not provided
+    # Create output directories and show error message otherwise
     try:
-        specific_output_dir = os.path.join(os.path.dirname(__file__), "..", multiple_dir_name, addition)
+        plot_dir = os.path.join(os.path.dirname(__file__), "..", f'{multiple_dir_name}{"_"}{N}', 'plots')
+        npy_dir = os.path.join(os.path.dirname(__file__), "..", f'{multiple_dir_name}{"_"}{N}', "npy")
     except Exception as e:
         logger.error(f"Error occurred while setting output directory: {e}")
-    os.makedirs(specific_output_dir, exist_ok=True)
+    os.makedirs(plot_dir, exist_ok=True)
+    os.makedirs(npy_dir, exist_ok=True)
 
-    # Set up initial condition with proper noise calculation
-    if init_cond_type == "Random":
-        initial_condition = np.random.normal(0, 0.1, N)
-    elif init_cond_type == "Zero":
-        initial_condition = np.zeros(N)
-    elif init_cond_type == "Memory Pattern":
-        if p > 0:
-            pattern_index = np.random.randint(0, p)
-            pattern = eta[pattern_index]
-            initial_condition = pattern.copy()
-        else:
-            initial_condition = np.random.normal(0, 0.1, N)
-    else:  # Near Memory Pattern
-        if p > 0:
-            pattern_index = np.random.randint(0, p)
-            pattern = eta[pattern_index % p]  # Getting the pattern based on index
-            # Add noise scaled relative to pattern magnitude
-            pattern_std = np.std(pattern)
-            noise = np.random.normal(0, noise_level * pattern_std, N)
-            initial_condition = pattern + noise
-        else:
-            initial_condition = np.random.normal(0, 0.1, N)
+    # Set up initial condition with proper noise calculation, no pattern index here (random)
+    initial_condition = initial_condition_creator(init_cond_type, N, p=p, eta=eta, noise_level=noise_level)
 
     # Run simulation with same φ parameters used in connectivity generation
     t, u, zeta = simulate_network(
@@ -121,7 +109,7 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
         use_ou=use_ou,
         ou_params=ou_params,
         r_m=phi_r_m,
-        beta=0.0,
+        beta=phi_beta,
         x_r=phi_x_r,
         model_type=model_type,
         constant_zeta=constant_zeta if not use_ou else None,
@@ -151,11 +139,6 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
                                               g_params,
                                               use_numba=use_numba,
                                               use_g=use_g)
-        
-    # Create data storage directory
-    npy_dir = os.path.join(specific_output_dir, "npy")
-    os.makedirs(npy_dir, exist_ok=True)
-    
 
     # # Save OU process
     # zeta_array = np.asarray(zeta)
@@ -168,8 +151,8 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
     
     # Calculate and save firing rates
     phi_u = sigmoid_function(u, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
-    np.save(os.path.join(npy_dir, "firing_rates.npy"), phi_u)
-    
+    np.save(os.path.join(npy_dir, "firing_rates" , f'{"firing_rates_"}{addition}{".npy"}'), phi_u)
+
     # # Save pattern overlaps if available
     # if p > 0 and overlaps is not None:
     #     np.save(os.path.join(npy_dir, "pattern_overlaps.npy"), overlaps)
@@ -187,133 +170,13 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
         plt.text(0.5, 0.5, 'No patterns to display', ha='center', va='center', transform=plt.gca().transAxes)
         plt.title('Pattern Overlaps')
     plt.tight_layout()
-    plt.savefig(os.path.join(specific_output_dir, "pattern_overlaps.png"), dpi=300)
+    plt.savefig(os.path.join(plot_dir, f'{"pattern_overlaps_"}{addition}{".png"}'), dpi=300)
     plt.close()
 
-
-    """
-    # Create complete 2x2 figure AND individual plots
-    print(f"\nCreating dynamics figure and individual plots...")
-    
-    # Create 2x2 subplot figure
-    fig, axs = plt.subplots(2, 2, figsize=(15, 10))
-    
-    # 1. Neural Currents (top-left)
-    n_plot = min(n_display, N)
-    ax = axs[0, 0]
-    for i in range(n_plot):
-        ax.plot(t, u[:, i], alpha=0.7, label=f'u_{i+1}')
-    ax.set_xlabel('Time')
-    ax.set_ylabel('Current')
-    ax.set_title(f'Neural Currents $u_i$ (first {n_plot} neurons)')
-    ax.grid(True)
-    if n_plot <= 5:
-        ax.legend()
-
-    # 2. Firing Rates (top-right)
-    ax = axs[0, 1]
-    for i in range(n_plot):
-        ax.plot(t, phi_u[:, i], alpha=0.7, label=f'φ(u_{i+1})')
-    ax.set_xlabel('Time')
-    ax.set_ylabel('FR')
-    ax.set_title(f'Firing Rates φ($u_i$) (first {n_plot} neurons)')
-    ax.grid(True)
-    if n_plot <= 5:
-        ax.legend()
-
-    # 3. Pattern Overlaps (bottom-left)
-    ax = axs[1, 0]
-    if p > 0 and overlaps is not None:
-        for i in range(p):
-            ax.plot(t, overlaps[:, i], label=f'Pattern {i+1}', linewidth=2)
-        ax.set_xlabel('Time')
-        ax.set_ylabel('Pattern Overlap')
-        ax.set_title(f'Memory Pattern Overlaps (A={A_S}, seed = {seed})')
-        ax.grid(True)
-        ax.legend()
-    else:
-        ax.text(0.5, 0.5, 'No patterns to display', ha='center', va='center', transform=ax.transAxes)
-        ax.set_title('Pattern Overlaps')
-
-    # 4. OU Process (bottom-right)
-    ax = axs[1, 1]
-    try:
-        if zeta_array.size == 1:
-            # Constant zeta case
-            zeta_val = float(zeta_array.item())
-            ax.axhline(y=zeta_val, color='r', linestyle='-', linewidth=2)
-            ax.set_ylim([zeta_val - 0.1, zeta_val + 0.1])
-            ax.set_title(f'Control Signal ζ(t) = {zeta_val:.2f} (constant)')
-        else:
-            # Time-varying zeta case with OU parameters in legend
-            if use_ou and ou_params is not None:
-                # Include OU parameters in legend
-                tau_zeta_val = ou_params.get('tau_zeta', tau_zeta)
-                zeta_bar_val = ou_params.get('zeta_bar', zeta_bar)
-                sigma_zeta_val = ou_params.get('sigma_zeta', sigma_zeta)
-                legend_label = f'ζ(t) ($τ_ζ$={tau_zeta_val:.1f}, $\\bar{{ζ}}$={zeta_bar_val:.1f}, $σ_ζ$={sigma_zeta_val:.2f})'
-                ax.set_title('Ornstein-Uhlenbeck Control Signal ζ(t)')
-            else:
-                legend_label = 'ζ(t)'
-                ax.set_title('Control Signal ζ(t)')
-            ax.plot(t, zeta_array, color='red', linewidth=1.5, label=legend_label)
-            ax.legend()
-
-        ax.set_xlabel('Time')
-        ax.set_ylabel('ζ(t)')
-        ax.grid(True)
-    except Exception as e:
-        print(f"Warning: Could not create ζ(t) plot - {e}")
-        ax.text(0.5, 0.5, f'OU Process Error: {e}', ha='center', va='center', transform=ax.transAxes)
-        ax.set_title('OU Process')
-    
-    plt.tight_layout()
-    
-    # Save complete 2x2 figure
-    complete_fig_path = os.path.join(specific_output_dir, "complete_simulation_results.png")
-    plt.savefig(complete_fig_path, dpi=300)
-    
-    # Extract and save individual plots from the 2x2 figure
-    titles = ['neural_currents', 'firing_rates', 'pattern_overlaps', 'ou_process']
-    
-    for i, ax in enumerate(axs.flat):
-        fig_single, ax_single = plt.subplots(figsize=(10, 6))
-        
-        # Copy all lines from original subplot
-        for line in ax.get_lines():
-            ax_single.plot(line.get_xdata(), line.get_ydata(), 
-                          label=line.get_label(), color=line.get_color(),
-                          alpha=line.get_alpha() if line.get_alpha() is not None else 1.0, 
-                          linewidth=line.get_linewidth())
-        
-        # Copy title, labels, and legend
-        ax_single.set_title(ax.get_title())
-        ax_single.set_xlabel(ax.get_xlabel())
-        ax_single.set_ylabel(ax.get_ylabel())
-        ax_single.grid(True)
-        
-        # Add legend if original had one
-        if ax.get_legend() is not None:
-            ax_single.legend()
-        
-        # Copy text annotations if any
-        for text in ax.texts:
-            ax_single.text(text.get_position()[0], text.get_position()[1], 
-                          text.get_text(), ha=text.get_ha(), va=text.get_va(),
-                          transform=ax_single.transAxes if text.get_transform() == ax.transAxes else ax_single.transData)
-        
-        # Copy axis limits for proper scaling
-        ax_single.set_xlim(ax.get_xlim())
-        ax_single.set_ylim(ax.get_ylim())
-        
-        plt.tight_layout()
-        
-        # Save individual plot
-        fig_single.savefig(os.path.join(specific_output_dir, f"{titles[i]}.png"), dpi=300)
-        plt.close(fig_single)  # Close to free memory
-        """
-
-    logger.info(f"Saved plots to {specific_output_dir}")
+    logger.info(f"Saved plots to {plot_dir}")
+    time_end = time.time()
+    elapsed_time = time_end - time_start
+    logger.info(f"Elapsed time for this simulation: {elapsed_time:.2f} seconds")
 
 # =================================================================
 
@@ -327,38 +190,52 @@ def multiple_simulations():
     np.random.seed(seed)
 
     # Create the main output directory
-    output_dir_name = multiple_dir_name
+    output_dir_name = f'{multiple_dir_name}{"_"}{N}'
     output_dir = os.path.join(os.path.dirname(__file__), "..", output_dir_name)
     os.makedirs(output_dir, exist_ok=True)
     logger.info(f"Output directory created at: {output_dir}")
 
-
-    # Generate connectivity matrix with all parameters
-    logger.info(
-        f"Generating connectivity matrices for {N} neurons with {p} patterns..."
-    )
-    W_S, W_A, W, eta, phi_eta = generate_connectivity_matrix(
-        N=N,
-        p=p,
-        q=q,
-        c=c,
-        A_S=A_S,
-        f_q=f_q,
-        f_x=f_x,
-        g_q=g_q,
-        g_x=g_x,
-        pattern_mean=pattern_mean,
-        pattern_sigma=pattern_sigma,
-        apply_sigma_cutoff=apply_sigma_cutoff,
-        phi_beta=phi_beta,
-        phi_r_m=phi_r_m,
-        phi_x_r=phi_x_r,
-        apply_phi_to_patterns=apply_phi_to_patterns,
-        apply_er_to_asymmetric=apply_er_to_asymmetric,
-        alpha=alpha,
-        enforce_max_correlation=enforce_max_correlation,
-        max_correlation=max_correlation)
-    logger.info("Matrices generated successfully!")
+    # Generate or import connectivity matrices
+    if import_connectivity:
+        try:
+            connectivity_path_symmetric = os.path.join(connectivity_dir, "connectivity_symmetric.npy")
+            connectivity_path_asymmetric = os.path.join(connectivity_dir, "connectivity_asymmetric.npy")
+            W_S = np.load(connectivity_path_symmetric)
+            W_A = np.load(connectivity_path_asymmetric)
+            W = W_S + W_A
+            phi_eta = np.load(os.path.join(connectivity_dir, "phi_memory_patterns.npy"))
+            eta = inverse_sigmoid_function(phi_eta, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
+        except Exception as e:
+            logger.error(f"Error loading connectivity matrices: {e}")
+            return
+        logger.info(f"Imported connectivity matrices from {connectivity_dir}")
+    else:
+        # Generate connectivity matrix with all parameters
+        logger.info(
+            f"Generating connectivity matrices for {N} neurons with {p} patterns"
+        )
+        W_S, W_A, W, eta, phi_eta = generate_connectivity_matrix(
+            N=N,
+            p=p,
+            q=q,
+            c=c,
+            A_S=A_S,
+            f_q=f_q,
+            f_x=f_x,
+            g_q=g_q,
+            g_x=g_x,
+            pattern_mean=pattern_mean,
+            pattern_sigma=pattern_sigma,
+            apply_sigma_cutoff=apply_sigma_cutoff,
+            phi_beta=phi_beta,
+            phi_r_m=phi_r_m,
+            phi_x_r=phi_x_r,
+            apply_phi_to_patterns=apply_phi_to_patterns,
+            apply_er_to_asymmetric=apply_er_to_asymmetric,
+            alpha=alpha,
+            enforce_max_correlation=enforce_max_correlation,
+            max_correlation=max_correlation)
+        logger.info("Matrices generated successfully!")
 
     # Display matrix statistics if verbose 
     if verbose:
@@ -386,44 +263,46 @@ def multiple_simulations():
         None
 
     # Calculate and print pattern correlation analysis
-    from modules.connectivity import calculate_pattern_correlation_matrix, plot_pattern_correlation_matrix
-    correlation_matrix, actual_max_correlation = calculate_pattern_correlation_matrix(
-        eta)
+    if not import_connectivity:
+        from modules.connectivity import calculate_pattern_correlation_matrix, plot_pattern_correlation_matrix
+        correlation_matrix, actual_max_correlation = calculate_pattern_correlation_matrix(eta)
 
 
-    if verbose:
-        logger.info(f"\nMemory Pattern Correlation Analysis:")
-        logger.info(f"Number of patterns: {eta.shape[0]}")
-        logger.info(f"Correlation constraint enforced: {enforce_max_correlation}")
-        if enforce_max_correlation:
-            logger.info(f"Maximum correlation threshold: {max_correlation:.3f}")
-        logger.info(f"Actual maximum correlation: {actual_max_correlation:.3f}")
+        if verbose:
+            logger.info(f"\nMemory Pattern Correlation Analysis:")
+            logger.info(f"Number of patterns: {eta.shape[0]}")
+            logger.info(f"Correlation constraint enforced: {enforce_max_correlation}")
+            if enforce_max_correlation:
+                logger.info(f"Maximum correlation threshold: {max_correlation:.3f}")
+            logger.info(f"Actual maximum correlation: {actual_max_correlation:.3f}")
+        else:
+            None
+
+        if N < 2001: # Only plot matrices for smaller networks
+            # Plot matrices
+            _, _, _ = plot_pattern_correlation_matrix(eta,
+                                                    enforce_max_correlation,
+                                                    max_correlation,
+                                                    ax=None, output_dir=output_dir)
+
+            fig1 = plt.figure(figsize=(15, 5))
+            ax1 = fig1.add_subplot(131)
+            ax2 = fig1.add_subplot(132)
+            ax3 = fig1.add_subplot(133)
+
+            plot_matrix(W_S, "Symmetric Component", ax=ax1)
+            plot_matrix(W_A, "Asymmetric Component", ax=ax2)
+            plot_matrix(W, "Total Connectivity", ax=ax3)
+
+            plt.tight_layout()
+            plt.savefig(os.path.join(output_dir, "connectivity_matrices.png"), dpi=150)
+            logger.info(f"Saved matrices visualization")
+        else:
+            logger.info(
+                "\nSkipping matrix plots for large network (N > 2000) to save time and resources."
+            )
     else:
         None
-
-    if N < 2001: # Only plot matrices for smaller networks
-        # Plot matrices
-        _, _, _ = plot_pattern_correlation_matrix(eta,
-                                                enforce_max_correlation,
-                                                max_correlation,
-                                                ax=None, output_dir=output_dir)
-
-        fig1 = plt.figure(figsize=(15, 5))
-        ax1 = fig1.add_subplot(131)
-        ax2 = fig1.add_subplot(132)
-        ax3 = fig1.add_subplot(133)
-
-        plot_matrix(W_S, "Symmetric Component", ax=ax1)
-        plot_matrix(W_A, "Asymmetric Component", ax=ax2)
-        plot_matrix(W, "Total Connectivity", ax=ax3)
-
-        plt.tight_layout()
-        plt.savefig(os.path.join(output_dir, "connectivity_matrices.png"), dpi=150)
-        logger.info(f"Saved matrices visualization")
-    else:
-        logger.info(
-            "\nSkipping matrix plots for large network (N > 2000) to save time and resources."
-        )
 
     # Print initial condition type
     logger.info(f"Initial condition type: {init_cond_type}")
@@ -455,10 +334,7 @@ def multiple_simulations():
         W_A_sim = W_A
         logger.info("Using both symmetric and asymmetric components for dynamics.") if verbose else None
 
-    logger.info(f"\nRunning {model_type} dynamics simulation...")
-    logger.info(f"Time span: {t_start} to {t_end}, τ = {tau}")
-    logger.info(
-        f"φ function: sigmoid (β={phi_beta}, r_m={phi_r_m}, x_r={phi_x_r})"
+    logger.info(f"\nRunning {model_type} dynamics simulation, time spanning from {t_start} to {t_end}, τ = {tau}, φ function: sigmoid (β={phi_beta}, r_m={phi_r_m}, x_r={phi_x_r})"
     ) 
 
     if verbose:
@@ -528,7 +404,7 @@ def multiple_simulations():
     np.save(os.path.join(npy_dir, "connectivity_asymmetric.npy"), W_A)
     np.save(os.path.join(npy_dir, "phi_memory_patterns.npy"), phi_eta)
 
-    for seed_index in range(8, runs):  # Run multiple simulations
+    for seed_index in range(13, 13+runs):  # Run multiple simulations
         # transform the number of the seed into a string called addition
         addition = str(seed_index)
         single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params, seed=seed_index, verbose=verbose)

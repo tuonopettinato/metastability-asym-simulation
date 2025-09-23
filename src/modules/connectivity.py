@@ -164,10 +164,10 @@ def generate_connectivity_matrix(N,
         Asymmetric component of connectivity matrix
     W : ndarray
         Total connectivity matrix (W_S + W_A)
-    eta : ndarray
-        Memory patterns used to generate the connectivity matrices
     eta_raw : ndarray
         Raw memory patterns before applying φ function
+    eta : ndarray
+        Memory patterns used to generate the connectivity matrices
     """
     # Generate random memory patterns from Gaussian distribution
     eta_raw = np.random.normal(pattern_mean, pattern_sigma, size=(p, N))
@@ -364,7 +364,9 @@ def plot_pattern_correlation_matrix(eta_patterns, enforce_max_correlation=False,
         Maximum absolute correlation between different patterns
     """
     correlation_matrix, max_correlation = calculate_pattern_correlation_matrix(eta_patterns)
-    
+    # set NaN on the diagonal for better visualization
+    np.fill_diagonal(correlation_matrix, np.nan)
+
     if ax is None:
         fig, ax = plt.subplots(figsize=(8, 6))
     else:
@@ -375,8 +377,8 @@ def plot_pattern_correlation_matrix(eta_patterns, enforce_max_correlation=False,
                 annot=True, 
                 fmt='.2f', 
                 cmap='RdBu_r', 
-                vmin=-1, 
-                vmax=1, 
+                vmin=-max_correlation, 
+                vmax=max_correlation, 
                 center=0,
                 ax=ax,
                 cbar_kws={"label": "Correlation Coefficient"},
