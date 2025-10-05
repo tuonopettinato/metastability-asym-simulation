@@ -36,8 +36,10 @@ def compute_energy(
     activation_term=True
 ):
     """
-    Compute total energy E(h) = -0.5 * h^T W h + sum_i ∫₀^{h_i} phi⁻¹(x) dx (/ tau ?)
+    h = phi(u) is the firing rate vector
+    Compute total energy E(u) = -0.5 * phi(u)^T W phi(u) + sum_i ∫₀^{phi(u_i)} phi⁻¹(x) dx 
     using lookup-table interpolation for fast integration.
+    
 
     Args:
         W: (N x N) connectivity matrix
@@ -93,8 +95,8 @@ def compute_energy(
 def compute_forces(W_symm, W_asymm, h, tau=1.0, phi_beta=1.5, phi_r_m=30.0, phi_x_r=2.0):
     """
     Compute the symmetric and asymmetric forces for all neurons:
-    F_symm_i(h) = sum_j W^S_ij * phi_j(h_j) - h_i (/ tau ?)
-    F_asymm_i(h) = sum_j W^A_ij * phi_j(h_j)
+    F_symm_i(u) = phi'(u_i) * [sum_j W^S_ij * phi_j(u_j) - u_i]
+    F_asymm_i(u) = sum_j W^A_ij * phi_j(u_j)
     
     Args:
         W: (N x N) connectivity matrix
@@ -106,13 +108,14 @@ def compute_forces(W_symm, W_asymm, h, tau=1.0, phi_beta=1.5, phi_r_m=30.0, phi_
         F_asymm: (M x N) array of asymmetric forces for each state, or (N,) single state
     """
     h, single_state, M, N = normalize_shape(h)
+    u = inverse_sigmoid_function(h, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
 
     # Compute activation function values
-    phi_h = sigmoid_function(h, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
+    phi_deriv_u = derivative_sigmoid_function(u, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
 
     # Compute forces
-    F_symm = (W_symm @ phi_h.T).T - h # Shape: (M, N)
-    F_asymm = (W_asymm @ phi_h.T).T         # Shape: (M, N)
+    F_symm =  phi_deriv_u * ((W_symm @ h.T).T - h) # Shape: (M, N)
+    F_asymm = phi_deriv_u * (W_asymm @ h.T).T         # Shape: (M, N)
 
     # Compute the average value of the forces (integrate over the path) F_avg = ∫ F(h) dh / ∫ dh
     dh = np.linalg.norm(np.diff(h, axis=0), axis=1)  # Shape: (M-1,)
@@ -125,7 +128,7 @@ def compute_forces(W_symm, W_asymm, h, tau=1.0, phi_beta=1.5, phi_r_m=30.0, phi_
     else:
         return F_symm, F_asymm, F_symm_avg, F_asymm_avg
 
-def plot_energy_from_npy(files, W, neuron1=0, neuron2=1, phi_beta=1.5, phi_r_m=30.0, phi_x_r=2.0):
+def plot_energy_from_npy(files, W_symm, W_asymm, tau, neuron1=0, neuron2=1, phi_beta=1.5, phi_r_m=30.0, phi_x_r=2.0):
     """
     Load firing rate data from multiple .npy files, compute energy, and plot 3D scatter
     of energy vs two selected neurons.
@@ -137,6 +140,10 @@ def plot_energy_from_npy(files, W, neuron1=0, neuron2=1, phi_beta=1.5, phi_r_m=3
         phi_beta, phi_r_m, phi_x_r: parameters for compute_energy
     """
     energies_list = []
+    f_symm_list1 = []
+    f_asymm_list1 = []
+    f_symm_list2 = []
+    f_asymm_list2 = []
     rates_n1 = []
     rates_n2 = []
 
@@ -145,19 +152,31 @@ def plot_energy_from_npy(files, W, neuron1=0, neuron2=1, phi_beta=1.5, phi_r_m=3
         # Ensure h shape is (states, neurons)
         if h.ndim == 1:
             h = h.reshape(1, -1)
-        elif h.shape[0] == W.shape[0]:
+        elif h.shape[0] == W_symm.shape[0]:
             h = h.T  # transpose (neurons x time) → (time x neurons)
-        elif h.shape[1] != W.shape[0]:
-            raise ValueError(f"Incompatible shape: {h.shape} vs W {W.shape}")
+        elif h.shape[1] != W_symm.shape[0]:
+            raise ValueError(f"Incompatible shape: {h.shape} vs W {W_symm.shape}")
         
         # Compute energy for each time point/state
-        E, _, _ = compute_energy(W, h, phi_beta=phi_beta, phi_r_m=phi_r_m, phi_x_r=phi_x_r)
+        E, _, _ = compute_energy(W_symm, h, phi_beta=phi_beta, phi_r_m=phi_r_m, phi_x_r=phi_x_r)
+        # Compute forces and plot the vectors (project on the plane of neuron1 and neuron2)
+        F_symm, F_asymm, _, _ = compute_forces(W_symm, W_asymm, h, tau= tau, phi_beta=phi_beta, phi_r_m=phi_r_m, phi_x_r=phi_x_r)
+        # Store energies and selected neuron rates
         
         energies_list.extend(E)
+        # Force component for neuron1 and neuron2
+        f_symm_list1.extend(F_symm[:, neuron1])  # Force component for neuron1 
+        f_asymm_list1.extend(F_asymm[:, neuron1])  # Force component for neuron1 
+        f_symm_list2.extend(F_symm[:, neuron2])  # Force component for neuron2
+        f_asymm_list2.extend(F_asymm[:, neuron2])  # Force component for neuron2
         rates_n1.extend(h[:, neuron1])
         rates_n2.extend(h[:, neuron2])
 
     energies_list = np.array(energies_list)
+    f_symm_list1 = np.array(f_symm_list1)
+    f_asymm_list1 = np.array(f_asymm_list1)
+    f_symm_list2 = np.array(f_symm_list2)
+    f_asymm_list2 = np.array(f_asymm_list2)
     rates_n1 = np.array(rates_n1)
     rates_n2 = np.array(rates_n2)
 
@@ -165,6 +184,9 @@ def plot_energy_from_npy(files, W, neuron1=0, neuron2=1, phi_beta=1.5, phi_r_m=3
     fig = plt.figure(figsize=(8,6))
     ax = fig.add_subplot(111, projection='3d')
     sc = ax.scatter(rates_n1, rates_n2, energies_list, c=energies_list, cmap='viridis', s=40)
+    # plot the vectors of the forces
+    ax.quiver(rates_n1, rates_n2, energies_list, f_symm_list1, f_symm_list2, np.zeros_like(energies_list), color='blue', length=0.5, normalize=True, label='Symmetric Force')
+    ax.quiver(rates_n1, rates_n2, energies_list, f_asymm_list1, f_asymm_list2, np.zeros_like(energies_list), color='red', length=0.5, normalize=True, label='Asymmetric Force')
 
     ax.set_xlabel(f'Neuron {neuron1+1} firing rate')
     ax.set_ylabel(f'Neuron {neuron2+1} firing rate')

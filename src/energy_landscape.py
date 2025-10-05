@@ -56,10 +56,11 @@ from parameters import (
 def main():
     multiple_sim_dir = os.path.join(os.path.dirname(__file__), "..", f'{"multiple_simulations_"}{N}', "npy")
     W_symm = np.load(os.path.join(multiple_sim_dir, "connectivity_symmetric.npy"))
+    W_asymm = np.load(os.path.join(multiple_sim_dir, "connectivity_asymmetric.npy"))
     files_dir = os.path.join(os.path.join(multiple_sim_dir, "firing_rates"))
     files = [os.path.join(files_dir, f) 
                 for f in os.listdir(files_dir) if f.endswith('.npy')]
-    fig = plot_energy_from_npy(files, W_symm, phi_beta=phi_beta, phi_r_m=phi_r_m, phi_x_r=phi_x_r)
-    fig.savefig(os.path.join(multiple_sim_dir, "landscape.pdf"))
+    fig = plot_energy_from_npy(files, W_symm, W_asymm, tau, phi_beta=phi_beta, phi_r_m=phi_r_m, phi_x_r=phi_x_r)
+    fig.savefig(os.path.join(multiple_sim_dir, "landscape.png"))
 if __name__ == "__main__":
     main()

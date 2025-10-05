@@ -62,7 +62,7 @@ from parameters import (
     )
 
 def main():
-    output_dir = os.path.join(os.path.dirname(__file__), "..", "simulation_results")
+    output_dir = os.path.join(os.path.dirname(__file__), "..", "simulation_results_silly")
     npy_dir = os.path.join(output_dir, "npy")
 
     # Calculate and plot energy
@@ -116,10 +116,10 @@ def main():
     # Energy on left y-axis
     ax1.plot(t, E_symm_traj, label='E (symm)', color='green')
     ax1.set_ylabel("Energy")
-    ax1.set_ylim(min(E_symm_traj[100:]) - 10, max(E_symm_traj[100:]) + 10)
+    ax1.set_ylim(min(E_symm_traj[300:]) - 10, max(E_symm_traj[300:]) + 10)
     ax2.plot(t, energy_gradient, label='- $\\nabla$ E', color='orange', alpha=0.7)
     ax2.set_ylabel("Energy Gradient")
-    ax2.set_ylim(min(energy_gradient[100:]) - 1, max(energy_gradient[100:]) + 1)
+    ax2.set_ylim(min(energy_gradient[300:]) - 1, max(energy_gradient[300:]) + 1)
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(lines1 + lines2, labels1 + labels2, loc="best")
@@ -127,13 +127,15 @@ def main():
     # --- Subplot: Forces (symmetrical and asymmetrical) --- 
     ax1 = plt.subplot(312)
     ax2 = ax1.twinx()  # create second y-axis 
-    ax1.plot(t, F_symm_norm, label='Symmetric force module', color='blue', alpha=0.7)
-    ax2.plot(t, F_asymm_norm, label='Asymmetric force module', color='red', alpha=0.7)
-    ax1.set_ylabel("Symmetric Force Norm")
-    ax2.set_ylabel("Asymmetric Force Norm")
+    ax1.plot(t, F_symm_norm, label='$|F^{symm}|$', color='blue', alpha=0.7)
+    ax2.plot(t, F_asymm_norm, label='$|F^{asymm}|$', color='red', alpha=0.7)
+    ax1.plot(t, np.full_like(t, 0.0), linestyle='--', color='gray', alpha=0.5)  # horizontal line at y=0
+    ax1.set_ylabel("$|F^{symm}|$")
+    ax2.set_ylabel("$|F^{asymm}|$")
     # ylims with min and max
-    ax1.set_ylim(min(F_symm_norm[100:]) - 1, max(F_symm_norm[100:]) + 1)
-    ax2.set_ylim(min(F_asymm_norm[100:]) - 1, max(F_asymm_norm[100:]) + 1)
+    ax1.set_ylim(-100, max(F_symm_norm[100:]) + 1)
+    ax2.set_ylim(-100, max(F_symm_norm[100:]) + 1)
+    # ax2.set_ylim(min(F_asymm_norm[100:]) - 1, max(F_asymm_norm[100:]) + 1)
 
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()

@@ -374,6 +374,7 @@ def simulation():
         np.save(os.path.join(npy_dir, "ou_process.npy"), zeta_array)
     
     # Calculate and save firing rates
+    np.save(os.path.join(npy_dir, "neural_currents.npy"), u)
     phi_u = sigmoid_function(u, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
     np.save(os.path.join(npy_dir, "firing_rates.npy"), phi_u)
     
