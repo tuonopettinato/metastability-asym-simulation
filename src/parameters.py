@@ -33,7 +33,7 @@ g_x = f_x              # Step threshold for g step function (3.0)
 
 # φ (phi) function (sigmoid) parameters - used for both connectivity and dynamics
 phi_beta = 1.5                 # Steepness parameter for sigmoid function
-phi_r_m = 30.0                  # Maximum firing rate for sigmoid function (using 30.0)
+phi_r_m = 30.                  # Maximum firing rate for sigmoid function (using 30.0)
 phi_x_r = 2.0                  # Threshold parameter for sigmoid function
 
 # Pattern distribution parameters
@@ -53,7 +53,7 @@ apply_er_to_asymmetric = False  # Apply Erdős-Rényi to asymmetric component
 # Time and integration parameters
 tau = 20.0              # Time constant for neural dynamics
 t_start = 0.0           # Simulation start time
-t_end = 20000.0           # Simulation end time
+t_end = 5000.0           # Simulation end time
 dt = 0.4                # Time step for simulation output (increased for efficiency)
 
 # Performance optimization
@@ -103,7 +103,7 @@ seed = 3 # Random seed for reproducibility
 
 if __name__ == "__main__":
     """Create a txt file in simulation_results"""
-    output_dir = os.path.join(os.path.dirname(__file__), "..", "simulation_results")
+    output_dir = os.path.join(os.path.dirname(__file__), "..", single_dir_name)
     os.makedirs(output_dir, exist_ok=True)
 
     params = {k: v for k, v in globals().items()

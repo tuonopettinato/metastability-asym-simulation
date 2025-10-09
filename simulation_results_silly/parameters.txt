@@ -21,7 +21,7 @@ apply_phi_to_patterns: True
 apply_er_to_asymmetric: False
 tau: 20.0
 t_start: 0.0
-t_end: 20000.0
+t_end: 5000.0
 dt: 0.4
 use_numba: True
 use_g: True
@@ -46,4 +46,4 @@ runs: 3
 import_connectivity: True
 connectivity_dir: /Users/valeriocaporioni/Documents/thesis/metastability-asym-simulation/src/../multiple_simulations_1500/npy
 seed: 3
-output_dir: /Users/valeriocaporioni/Documents/thesis/metastability-asym-simulation/src/../simulation_results
+output_dir: /Users/valeriocaporioni/Documents/thesis/metastability-asym-simulation/src/../simulation_results_silly
