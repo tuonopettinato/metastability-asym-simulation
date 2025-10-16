@@ -53,7 +53,7 @@ apply_er_to_asymmetric = False  # Apply Erdős-Rényi to asymmetric component
 # Time and integration parameters
 tau = 20.0              # Time constant for neural dynamics
 t_start = 0.0           # Simulation start time
-t_end = 5000.0           # Simulation end time
+t_end = 20.0           # Simulation end time
 dt = 0.4                # Time step for simulation output (increased for efficiency)
 
 # Performance optimization
@@ -93,7 +93,6 @@ multiple_dir_name = "multiple_simulations"
 runs = 3
 # Import connectivity or not
 import_connectivity = True
-connectivity_dir = os.path.join(os.path.dirname(__file__), "..", "multiple_simulations_1500", "npy")
 
 
 # =============================================================================

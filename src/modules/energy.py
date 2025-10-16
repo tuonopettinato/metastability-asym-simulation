@@ -127,6 +127,36 @@ def compute_forces(W_symm, W_asymm, h, tau=1.0, phi_beta=1.5, phi_r_m=30.0, phi_
         return F_symm[0], F_asymm[0]
     else:
         return F_symm, F_asymm, F_symm_avg, F_asymm_avg
+    
+def project_flux_on_dynamics(history, flux, eps=1e-12):
+    """
+    Compute the projection of the flux on the direction of the dynamics for each time step:
+        proj[t] = Flux(t) · (state(t+1) - state(t)) / ||state(t+1) - state(t)||
+
+    Args:
+        history: (M, N) array, states over time (M time steps, N neurons)
+        flux:    (M, N) array, flux over time (M time steps, N neurons)
+        eps:     small threshold to avoid division by zero
+
+    Returns:
+        proj: (M,) array of projections for t = 0..M-2, last entry same as M-2
+    """
+    if history.ndim != 2 or flux.ndim != 2:
+        raise ValueError("history and flux must be 2D arrays of shape (M, N).")
+    if history.shape != flux.shape:
+        raise ValueError("history and flux must have the same shape (M, N).")
+
+    M, N = history.shape
+    delta = np.diff(history, axis=0)             # (M-1, N), state(t+1) - state(t)
+    norms = np.linalg.norm(delta, axis=1)        # (M-1,)
+    dots = np.sum(flux[:-1, :] * delta, axis=1)  # (M-1,) this is flux(t) · delta(t)
+
+    proj = np.zeros(M - 1, dtype=float)
+    mask = norms > eps
+    proj[mask] = dots[mask] / norms[mask] # this is the normalized projection
+    proj = np.append(proj, proj[-1])  # keep length M
+    return proj
+
 
 def plot_energy_from_npy(files, W_symm, W_asymm, tau, neuron1=0, neuron2=1, phi_beta=1.5, phi_r_m=30.0, phi_x_r=2.0):
     """

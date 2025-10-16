@@ -71,7 +71,6 @@ from parameters import (
     runs,
     # Import connectivity or not
     import_connectivity,
-    connectivity_dir,
     # Seed for reproducibility
     seed
     )
@@ -86,14 +85,10 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
     """
     time_start = time.time() # Start time measurement
     np.random.seed(seed)  # for reproducibility
-    # Create output directories and show error message otherwise
-    try:
-        plot_dir = os.path.join(os.path.dirname(__file__), "..", f'{multiple_dir_name}{"_"}{N}', 'plots')
-        npy_dir = os.path.join(os.path.dirname(__file__), "..", f'{multiple_dir_name}{"_"}{N}', "npy")
-    except Exception as e:
-        logger.error(f"Error occurred while setting output directory: {e}")
-    os.makedirs(plot_dir, exist_ok=True)
-    os.makedirs(npy_dir, exist_ok=True)
+    # names of the output directories (already created in multiple_simulations, see below)
+    output_dir = os.path.join(os.path.dirname(__file__), "..", f'{multiple_dir_name}{"_"}{N}')
+    plot_dir = os.path.join(output_dir, 'plots')
+    npy_dir = os.path.join(output_dir, "npy")
 
     # Set up initial condition with proper noise calculation, no pattern index here (random)
     initial_condition = initial_condition_creator(init_cond_type, N, p=p, eta=eta, noise_level=noise_level)
@@ -190,30 +185,30 @@ def multiple_simulations():
     np.random.seed(seed)
 
     # Create the main output directory
-    output_dir_name = f'{multiple_dir_name}{"_"}{N}'
-    output_dir = os.path.join(os.path.dirname(__file__), "..", output_dir_name)
+    output_dir = os.path.join(os.path.dirname(__file__), "..", f'{multiple_dir_name}{"_"}{N}')
     os.makedirs(output_dir, exist_ok=True)
-    logger.info(f"Output directory created at: {output_dir}")
+    # Create the npy and plots subdirectories
+    npy_dir = os.path.join(output_dir, "npy")
+    os.makedirs(npy_dir, exist_ok=True)
+    plot_dir = os.path.join(output_dir, "plots")
+    os.makedirs(plot_dir, exist_ok=True)
+    logger.info(f"Output directories created at: {output_dir}")
 
-    # Generate or import connectivity matrices
-    if import_connectivity:
-        try:
-            connectivity_path_symmetric = os.path.join(connectivity_dir, "connectivity_symmetric.npy")
-            connectivity_path_asymmetric = os.path.join(connectivity_dir, "connectivity_asymmetric.npy")
-            W_S = np.load(connectivity_path_symmetric)
-            W_A = np.load(connectivity_path_asymmetric)
-            W = W_S + W_A
-            phi_eta = np.load(os.path.join(connectivity_dir, "phi_memory_patterns.npy"))
-            eta = inverse_sigmoid_function(phi_eta, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
-        except Exception as e:
-            logger.error(f"Error loading connectivity matrices: {e}")
-            return
-        logger.info(f"Imported connectivity matrices from {connectivity_dir}")
-    else:
-        # Generate connectivity matrix with all parameters
-        logger.info(
-            f"Generating connectivity matrices for {N} neurons with {p} patterns"
-        )
+    connectivity_path_symmetric = os.path.join(npy_dir, "connectivity_symmetric.npy")
+    connectivity_path_asymmetric = os.path.join(npy_dir, "connectivity_asymmetric.npy")
+    phi_eta_path = os.path.join(npy_dir, "phi_memory_patterns.npy")
+
+    def load_connectivity():
+        W_S = np.load(connectivity_path_symmetric)
+        W_A = np.load(connectivity_path_asymmetric)
+        W = W_S + W_A
+        phi_eta = np.load(phi_eta_path)
+        eta = inverse_sigmoid_function(phi_eta, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
+        logger.info(f"Imported connectivity matrices from {npy_dir}")
+        return W_S, W_A, W, eta, phi_eta
+    
+    def generate_connectivity():
+        logger.info(f"Generating connectivity matrices...")
         W_S, W_A, W, eta, phi_eta = generate_connectivity_matrix(
             N=N,
             p=p,
@@ -236,6 +231,17 @@ def multiple_simulations():
             enforce_max_correlation=enforce_max_correlation,
             max_correlation=max_correlation)
         logger.info("Matrices generated successfully!")
+        return W_S, W_A, W, eta, phi_eta
+
+    # Generate or import connectivity matrices
+    if import_connectivity:
+        try:
+            W_S, W_A, W, eta, phi_eta = load_connectivity()
+        except Exception as e:
+            logger.warning(f"Connectivity import failed ({e}). Generating new matrices.")
+            W_S, W_A, W, eta, phi_eta = generate_connectivity()
+    else:
+        W_S, W_A, W, eta, phi_eta = generate_connectivity()
 
     # Display matrix statistics if verbose 
     if verbose:
@@ -404,7 +410,7 @@ def multiple_simulations():
     np.save(os.path.join(npy_dir, "connectivity_asymmetric.npy"), W_A)
     np.save(os.path.join(npy_dir, "phi_memory_patterns.npy"), phi_eta)
 
-    for seed_index in range(13, 13+runs):  # Run multiple simulations
+    for seed_index in range(19, 19+runs):  # Run multiple simulations
         # transform the number of the seed into a string called addition
         addition = str(seed_index)
         single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params, seed=seed_index, verbose=verbose)

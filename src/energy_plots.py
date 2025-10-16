@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from modules.activation import step_function
 from modules.connectivity import generate_connectivity_matrix, plot_matrix
 from modules.dynamics import simulate_network, calculate_pattern_overlaps
-from modules.energy import compute_energy, compute_forces
+from modules.energy import compute_energy, compute_forces, project_flux_on_dynamics
 
 # Import all parameters from parameters.py
 from parameters import (
@@ -110,7 +110,7 @@ def main():
     plt.figure(figsize=(12, 8))
 
     # --- subplot: Energy (left) and Flux (right) ---
-    ax1 = plt.subplot(311)
+    ax1 = plt.subplot(411)
     ax2 = ax1.twinx()  # create second y-axis
 
     # Energy on left y-axis
@@ -125,7 +125,7 @@ def main():
     ax1.legend(lines1 + lines2, labels1 + labels2, loc="best")
 
     # --- Subplot: Forces (symmetrical and asymmetrical) --- 
-    ax1 = plt.subplot(312)
+    ax1 = plt.subplot(412)
     ax2 = ax1.twinx()  # create second y-axis 
     ax1.plot(t, F_symm_norm, label='$|F^{symm}|$', color='blue', alpha=0.7)
     ax2.plot(t, F_asymm_norm, label='$|F^{asymm}|$', color='red', alpha=0.7)
@@ -142,15 +142,46 @@ def main():
     ax1.legend(lines1 + lines2, labels1 + labels2, loc="best")
 
     # --- subplot: Overlaps ---
-    plt.subplot(313)
+    plt.subplot(413)
     for i in range(p):
         plt.plot(t, overlaps[i], label=f'P {i+1}')
     plt.ylabel("Overlap")
     plt.legend()
 
+    plt.subplot(414)
+    # projection of the flux on the dynamics
+    print(np.shape(h), np.shape(F_symm), np.shape(F_asymm))
+    proj_flux_symm = project_flux_on_dynamics(h, F_symm)
+    proj_flux_asymm = project_flux_on_dynamics(h, F_asymm)
+    plt.plot(t, proj_flux_symm, label='Projection of flux on dynamics (symm)', color='purple')
+    plt.plot(t, proj_flux_asymm, label='Projection of flux on dynamics (asymm)', color='orange')
+    plt.axhline(0, color='gray', linestyle='--', alpha=0.5)
+    plt.ylabel("Projection")
+    plt.xlabel("Time (s)")
+    plt.legend()
+
+
     # Save + show
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, "energy_and_overlaps.png"))
+    if show_sim_plots:
+        plt.show()
+
+    plt.figure(figsize=(12, 8))
+    plt.subplot(211)
+    for i in range(p):
+        plt.plot(t, overlaps[i], label=f'P {i+1}')
+    plt.ylabel("Overlap")
+    plt.legend()
+    plt.subplot(212)
+    plt.plot(t, proj_flux_symm, label='Symm', color='purple')
+    plt.plot(t, proj_flux_asymm, label='Asymm', color='orange')
+    plt.axhline(0, color='gray', linestyle='--', alpha=0.5)
+    plt.ylabel("Flux Proj on Dynamics")
+    plt.xlabel("$t$")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "overlaps_and_flux_projection.png"))
     if show_sim_plots:
         plt.show()
 

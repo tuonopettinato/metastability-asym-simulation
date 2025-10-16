@@ -25,7 +25,7 @@ zeta_bar: 0.65
 sigma_zeta: 0.65
 constant_zeta: None
 t_start: 0.0
-t_end: 20000.0
+t_end: 20.0
 dt: 0.4
 tau: 20.0
 init_cond_type: Random
