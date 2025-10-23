@@ -166,24 +166,59 @@ def main():
     plt.savefig(os.path.join(output_dir, "energy_and_overlaps.png"))
     if show_sim_plots:
         plt.show()
+    
+    # Make a new plot but just with overlaps and energy
+    # make sure the energy takes the color of the winning overlap
+    fig, axs = plt.subplots(2, 1, figsize=(13, 8), gridspec_kw={'height_ratios': [1, 2]})
 
-    plt.figure(figsize=(12, 8))
-    plt.subplot(211)
     for i in range(p):
-        plt.plot(t, overlaps[i], label=f'P {i+1}')
-    plt.ylabel("Overlap")
-    plt.legend()
-    plt.subplot(212)
-    plt.plot(t, proj_flux_symm, label='Symm', color='purple')
-    plt.plot(t, proj_flux_asymm, label='Asymm', color='orange')
-    plt.axhline(0, color='gray', linestyle='--', alpha=0.5)
-    plt.ylabel("Flux Proj on Dynamics")
-    plt.xlabel("$t$")
-    plt.legend()
+        axs[0].plot(t, overlaps[i], label=f'P {i+1}')
+    axs[0].set_ylabel("Overlaps", fontsize=20)
+    axs[0].legend(fontsize=18)
+    axs[0].tick_params(axis='both', labelsize=18)
+
+
+    winning_pattern = np.argmax(overlaps, axis=0)
+    colors = plt.get_cmap('tab10').colors[:p]
+    E_symm_traj_N = E_symm_traj / N
+    for i in range(len(t)-1):
+        axs[1].plot(t[i:i+2], E_symm_traj_N[i:i+2], color=colors[winning_pattern[i]], linewidth=2)
+
+    axs[1].set_ylabel("$E/N$", fontsize=20)
+    axs[1].set_xlabel("$t$", fontsize=20)
+    axs[1].set_ylim(min(E_symm_traj_N[300:]) - 1, max(E_symm_traj_N[300:]) + 1)
+    axs[1].tick_params(axis='both', labelsize=18)
+
     plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, "overlaps_and_flux_projection.png"))
+    plt.savefig(os.path.join(output_dir, "overlaps_energy.png"), bbox_inches='tight')
+
     if show_sim_plots:
         plt.show()
+
+    fig, axs = plt.subplots(2, 1, figsize=(12, 8), gridspec_kw={'height_ratios': [1, 2]})
+
+    for i in range(p):
+        axs[0].plot(t, overlaps[i], label=f'P {i+1}')
+    axs[0].set_ylabel("Overlaps", fontsize=20)
+    axs[0].legend(fontsize=18)
+    axs[0].tick_params(axis='both', labelsize=18)
+    axs[0].set_xlim(4100, 5100)
+
+    axs[1].plot(t, proj_flux_symm/N, label='Symm', color='k', alpha=0.6)
+    axs[1].plot(t, proj_flux_asymm/N, label='Asymm', color='k', ls='dotted')
+    axs[1].axhline(0, color='gray', linestyle='--', alpha=0.5)
+    axs[1].set_ylabel("Force Proj. / N", fontsize=20)
+    axs[1].set_xlabel("$t$", fontsize=20)
+    axs[1].legend(fontsize=18)
+    axs[1].tick_params(axis='both', labelsize=18)
+    axs[1].set_xlim(4100, 5100)
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "overlaps_and_projections.png"))
+
+    if show_sim_plots:
+        plt.show()
+
 
 
 """

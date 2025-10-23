@@ -35,9 +35,9 @@ phi_u = np.load(os.path.join(npy_dir, "firing_rates.npy"))
 zeta = np.load(os.path.join(npy_dir, "ou_process.npy"))
 params = np.load(os.path.join(npy_dir, "simulation_parameters.npy"), allow_pickle=True).item()
 
-N = params['N']
-n_display = params.get('n_display', min(5, N))
-p = params.get('p', 0)
+N = 1300
+n_display = 5
+p = 4
 
 # Try to load pattern overlaps if available
 overlaps = None
@@ -95,10 +95,10 @@ if np.all(zeta == zeta[0]):
     ax.set_title(f'Control Signal ζ(t) = {zeta_val:.2f} (constant)')
 else:
     ax.plot(t, zeta, color='red', linewidth=1.5, label='ζ(t)')
-    ax.set_title('Control Signal ζ(t)')
+    ax.set_title('$\zeta(t)$')
     ax.legend()
-ax.set_xlabel('Time')
-ax.set_ylabel('ζ(t)')
+ax.set_xlabel('$t$')
+ax.set_ylabel('$\zeta(t)$')
 ax.grid(True)
 
 plt.tight_layout()

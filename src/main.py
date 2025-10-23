@@ -194,6 +194,10 @@ def multiple_simulations():
     os.makedirs(plot_dir, exist_ok=True)
     logger.info(f"Output directories created at: {output_dir}")
 
+    # firing rates subdirectory
+    firing_rates_dir = os.path.join(npy_dir, "firing_rates")
+    os.makedirs(firing_rates_dir, exist_ok=True)
+
     connectivity_path_symmetric = os.path.join(npy_dir, "connectivity_symmetric.npy")
     connectivity_path_asymmetric = os.path.join(npy_dir, "connectivity_asymmetric.npy")
     phi_eta_path = os.path.join(npy_dir, "phi_memory_patterns.npy")
@@ -350,10 +354,6 @@ def multiple_simulations():
             logger.info("Numba optimization disabled")
     else:
         None
-    
-    # Saving common data in main npy dir
-    npy_dir = os.path.join(output_dir, "npy")
-    os.makedirs(npy_dir, exist_ok=True)
 
     # Save simulation parameters
     params = {

@@ -192,7 +192,8 @@ def simulation():
         p=p,
         eta=eta,
         pattern_idx=pattern_idx,
-        noise_level=noise_level
+        noise_level=noise_level,
+        seed=seed+19
     )
 
     # Simulation time span
@@ -471,9 +472,9 @@ def simulation():
     ax = axs[0, 0]
     for i in range(n_plot):
         ax.plot(t, u[:, i], alpha=0.7, label=f'u_{i+1}')
-    ax.set_xlabel('Time')
-    ax.set_ylabel('Current')
-    ax.set_title(f'Neural Currents $u_i$ (first {n_plot} neurons)')
+    ax.set_xlabel('$t$', fontsize = 20)
+    ax.set_ylabel('$u_i$', fontsize = 20)
+    # ax.set_title(f'Neural Currents $u_i$ (first {n_plot} neurons)')
     ax.grid(True)
     if n_plot <= 5:
         ax.legend()
@@ -482,29 +483,15 @@ def simulation():
     ax = axs[0, 1]
     for i in range(n_plot):
         ax.plot(t, phi_u[:, i], alpha=0.7, label=f'φ(u_{i+1})')
-    ax.set_xlabel('Time')
-    ax.set_ylabel('FR')
-    ax.set_title(f'Firing Rates φ($u_i$) (first {n_plot} neurons)')
+    ax.set_xlabel('$t$', fontsize = 20)
+    ax.set_ylabel('FR', fontsize = 20)
+    # ax.set_title(f'Firing Rates φ($u_i$) (first {n_plot} neurons)')
     ax.grid(True)
     if n_plot <= 5:
         ax.legend()
 
-    # 3. Pattern Overlaps (bottom-left)
+    # 3. OU Process (bottom-right)
     ax = axs[1, 0]
-    if p > 0 and overlaps is not None:
-        for i in range(p):
-            ax.plot(t, overlaps[:, i], label=f'Pattern {i+1}', linewidth=2)
-        ax.set_xlabel('Time')
-        ax.set_ylabel('Pattern Overlap')
-        ax.set_title(f'Memory Pattern Overlaps (A={A_S}, seed = {seed})')
-        ax.grid(True)
-        ax.legend()
-    else:
-        ax.text(0.5, 0.5, 'No patterns to display', ha='center', va='center', transform=ax.transAxes)
-        ax.set_title('Pattern Overlaps')
-
-    # 4. OU Process (bottom-right)
-    ax = axs[1, 1]
     try:
         if zeta_array.size == 1:
             # Constant zeta case
@@ -519,21 +506,45 @@ def simulation():
                 tau_zeta_val = ou_params.get('tau_zeta', tau_zeta)
                 zeta_bar_val = ou_params.get('zeta_bar', zeta_bar)
                 sigma_zeta_val = ou_params.get('sigma_zeta', sigma_zeta)
-                legend_label = f'ζ(t) ($τ_ζ$={tau_zeta_val:.1f}, $\\bar{{ζ}}$={zeta_bar_val:.1f}, $σ_ζ$={sigma_zeta_val:.2f})'
-                ax.set_title('Ornstein-Uhlenbeck Control Signal ζ(t)')
+                legend_label = f'$τ_ζ$={tau_zeta_val:.2f}, $\\bar{{ζ}}$={zeta_bar_val:.2f}, $σ_ζ$={sigma_zeta_val:.2f}'
+                # set up an array with spikes of the OU process over a threshold (2.0)
+                spikes = np.where(zeta_array > 2.0)[0]
+                # ax.set_title('Ornstein-Uhlenbeck Control Signal ζ(t)')
             else:
                 legend_label = 'ζ(t)'
-                ax.set_title('Control Signal ζ(t)')
-            ax.plot(t, zeta_array, color='red', linewidth=1.5, label=legend_label)
-            ax.legend()
+                # ax.set_title('Control Signal ζ(t)')
+            # plot a line at 2
+            ax.axhline(y=2.0, color='gray', alpha=0.5)
+            ax.plot(t, zeta_array, color='k', linewidth=1.5, label=legend_label)
+            ax.legend(fontsize = 18)
 
-        ax.set_xlabel('Time')
-        ax.set_ylabel('ζ(t)')
+        ax.set_xlabel('$t$', fontsize = 20)
+        ax.set_ylabel('$\zeta(t)$', fontsize = 20)
         ax.grid(True)
     except Exception as e:
         logger.error(f"Warning: Could not create ζ(t) plot - {e}")
         ax.text(0.5, 0.5, f'OU Process Error: {e}', ha='center', va='center', transform=ax.transAxes)
         ax.set_title('OU Process')
+    
+    # 4. Pattern Overlaps (bottom-left)
+    ax = axs[1, 1]
+    # plot spikes if OU process had spikes
+    if spikes.size > 0:
+        for spike_time in t[spikes]:
+            ax.axvline(x=spike_time, color='gray', linestyle='--', alpha=0.3)
+    # plot a line at 0.8
+    ax.axhline(y=0.8, color='gray', alpha=0.5)
+    if p > 0 and overlaps is not None:
+        for i in range(p):
+            ax.plot(t, overlaps[:, i], label=f'P {i+1}', linewidth=2)
+        ax.set_xlabel('$t$', fontsize = 20)
+        ax.set_ylabel('Overlaps', fontsize = 20)
+        # ax.set_title(f'Memory Pattern Overlaps (A={A_S}, seed = {seed})')
+        ax.grid(False)
+        ax.legend()
+    else:
+        ax.text(0.5, 0.5, 'No patterns to display', ha='center', va='center', transform=ax.transAxes)
+        ax.set_title('Pattern Overlaps')
     
     plt.tight_layout()
     
@@ -542,7 +553,7 @@ def simulation():
     plt.savefig(complete_fig_path, dpi=300)
     
     # Extract and save individual plots from the 2x2 figure
-    titles = ['neural_currents', 'firing_rates', 'pattern_overlaps', 'ou_process']
+    titles = ['neural_currents', 'firing_rates', 'ou_process', 'pattern_overlaps']
     
     for i, ax in enumerate(axs.flat):
         fig_single, ax_single = plt.subplots(figsize=(10, 6))
@@ -555,14 +566,14 @@ def simulation():
                           linewidth=line.get_linewidth())
         
         # Copy title, labels, and legend
-        ax_single.set_title(ax.get_title())
-        ax_single.set_xlabel(ax.get_xlabel())
-        ax_single.set_ylabel(ax.get_ylabel())
-        ax_single.grid(True)
+        # ax_single.set_title(ax.get_title())
+        ax_single.set_xlabel(ax.get_xlabel(), fontsize = 20)
+        ax_single.set_ylabel(ax.get_ylabel(), fontsize = 20)
+        ax_single.grid(False)
         
         # Add legend if original had one
         if ax.get_legend() is not None:
-            ax_single.legend()
+            ax_single.legend(fontsize = 18)
         
         # Copy text annotations if any
         for text in ax.texts:

@@ -71,9 +71,11 @@ def simulate_ou_process(t_span, dt, tau_zeta, zeta_bar, sigma_zeta, seed=None):
 
     return t, zeta
 
-def initial_condition_creator(init_cond_type, N, p=0, eta=None, pattern_idx=None, noise_level=0.5):
+def initial_condition_creator(init_cond_type, N, p=0, eta=None, pattern_idx=None, noise_level=0.5, seed = None):
     """Create initial condition based on specified type."""
     # Set up initial condition with proper noise calculation
+    if seed is not None:
+        np.random.seed(seed)
     pattern_index = np.random.randint(0, p) if pattern_idx is None else pattern_idx
     if init_cond_type == "Random":
         initial_condition = np.random.normal(0, 0.1, N)
