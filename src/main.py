@@ -409,6 +409,7 @@ def multiple_simulations():
     np.save(os.path.join(npy_dir, "connectivity_symmetric.npy"), W_S)
     np.save(os.path.join(npy_dir, "connectivity_asymmetric.npy"), W_A)
     np.save(os.path.join(npy_dir, "phi_memory_patterns.npy"), phi_eta)
+    np.save(os.path.join(npy_dir, "memory_patterns.npy"), eta)
 
     for seed_index in range(19, 19+runs):  # Run multiple simulations
         # transform the number of the seed into a string called addition
