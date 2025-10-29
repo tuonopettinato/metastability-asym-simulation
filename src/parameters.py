@@ -86,7 +86,7 @@ show_sim_plots = False  # Whether to show individual plots for each variable
 plot_connectivity_matrices = False,
 plot_heatmap= True,
 verbose = False
-single_dir_name = "simulation_results_silly"
+single_dir_name = "simulation_results_new"
 multiple_dir_name = "multiple_simulations"
 
 # Number of runs

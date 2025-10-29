@@ -63,7 +63,6 @@ def matrix_vector_multiply_parallel(W, v):
 
 @jit(nopython=True, cache=False)
 def network_dynamics_recanatesi_numba(u, W_S, W_A, tau, zeta_value, dt, r_m, beta, x_r):
-    # Convert inputs to float32
     u = u.astype(np.float32)
     W_S = W_S.astype(np.float32)
     W_A = W_A.astype(np.float32)
@@ -74,7 +73,7 @@ def network_dynamics_recanatesi_numba(u, W_S, W_A, tau, zeta_value, dt, r_m, bet
     x_r = np.float32(x_r)
     
     N = u.size
-    phi_u = apply_activation_sigmoid(u, r_m, beta, x_r) # Apply φ activation
+    phi_u = apply_activation_sigmoid(u, r_m, beta, x_r)
     symmetric_input = matrix_vector_multiply_parallel(W_S, phi_u)
     asymmetric_input = matrix_vector_multiply_parallel(W_A, phi_u)
     du_dt = np.empty(N, dtype=np.float32)
@@ -84,7 +83,6 @@ def network_dynamics_recanatesi_numba(u, W_S, W_A, tau, zeta_value, dt, r_m, bet
 
 @jit(nopython=True, cache=False)
 def network_dynamics_brunel_numba(u, W_S, W_A, tau, zeta_value, r_m, beta, x_r):
-    # Convert inputs to float32
     u = u.astype(np.float32)
     W_S = W_S.astype(np.float32)
     W_A = W_A.astype(np.float32)
@@ -102,7 +100,7 @@ def network_dynamics_brunel_numba(u, W_S, W_A, tau, zeta_value, r_m, beta, x_r):
     return du_dt
 
 # -----------------------------
-# RK4 integration step
+# RK4 integration step (for network)
 # -----------------------------
 
 @jit(nopython=True, cache=False)
@@ -113,29 +111,37 @@ def rk4_step_numba(u, dt, W_S, W_A, tau, zeta_curr, zeta_next,
 
     if model_type == 0:
         k1 = network_dynamics_recanatesi_numba(u, W_S, W_A, tau, zeta_curr, dt, r_m, beta, x_r)
-        k2 = network_dynamics_recanatesi_numba(u + 0.5*k1, W_S, W_A, tau, zeta_mid, dt, r_m, beta, x_r)
-        k3 = network_dynamics_recanatesi_numba(u + 0.5*k2, W_S, W_A, tau, zeta_mid, dt, r_m, beta, x_r)
+        k2 = network_dynamics_recanatesi_numba(u + 0.5 * k1, W_S, W_A, tau, zeta_mid, dt, r_m, beta, x_r)
+        k3 = network_dynamics_recanatesi_numba(u + 0.5 * k2, W_S, W_A, tau, zeta_mid, dt, r_m, beta, x_r)
         k4 = network_dynamics_recanatesi_numba(u + k3, W_S, W_A, tau, zeta_next, dt, r_m, beta, x_r)
     else:
         k1 = network_dynamics_brunel_numba(u, W_S, W_A, tau, zeta_curr, r_m, beta, x_r)
-        k2 = network_dynamics_brunel_numba(u + 0.5*k1, W_S, W_A, tau, zeta_mid, r_m, beta, x_r)
-        k3 = network_dynamics_brunel_numba(u + 0.5*k2, W_S, W_A, tau, zeta_mid, r_m, beta, x_r)
+        k2 = network_dynamics_brunel_numba(u + 0.5 * k1, W_S, W_A, tau, zeta_mid, r_m, beta, x_r)
+        k3 = network_dynamics_brunel_numba(u + 0.5 * k2, W_S, W_A, tau, zeta_mid, r_m, beta, x_r)
         k4 = network_dynamics_brunel_numba(u + k3, W_S, W_A, tau, zeta_next, r_m, beta, x_r)
 
-    return u + dt * (k1 + np.float32(2.0)*k2 + np.float32(2.0)*k3 + k4) / np.float32(6.0)
+    return u + dt * (k1 + 2.0 * k2 + 2.0 * k3 + k4) / 6.0
 
 # -----------------------------
-# Ornstein-Uhlenbeck process
+# Ornstein-Uhlenbeck process (Heun)
 # -----------------------------
 
 @jit(nopython=True, cache=False)
 def simulate_ou_process_numba(n_steps, dt, tau_zeta, zeta_bar, sigma_zeta):
+    """
+    Simulate an Ornstein-Uhlenbeck process with Heun's method (2nd order stochastic).
+    """
     zeta = np.empty(n_steps, dtype=np.float32)
-    zeta[0] = zeta_bar
+    zeta[0] = np.float32(zeta_bar)
+
     for i in range(1, n_steps):
-        dW = np.random.normal(0.0, 1.0)
-        dzeta = (-zeta[i-1] + zeta_bar) * dt / tau_zeta + np.sqrt(2*sigma_zeta**2*tau_zeta*dt) * dW / tau_zeta
-        zeta[i] = zeta[i-1] + dzeta
+        z_curr = zeta[i - 1]
+        dW = np.float32(np.random.normal(0.0, np.sqrt(dt)))  # Wiener increment
+        f_curr = (-(z_curr - zeta_bar) / tau_zeta).astype(np.float32)
+        z_pred = z_curr + f_curr * dt + sigma_zeta * dW
+        f_pred = (-(z_pred - zeta_bar) / tau_zeta).astype(np.float32)
+        zeta[i] = z_curr + 0.5 * dt * (f_curr + f_pred) + sigma_zeta * dW
+
     return zeta
 
 # -----------------------------
@@ -149,14 +155,14 @@ def simulate_network_numba(W_S, W_A, initial_condition, n_steps, dt, tau, r_m, b
     u = np.empty((n_steps, N), dtype=np.float32)
     u[0, :] = initial_condition
     for i in range(1, n_steps):
-        zeta_curr = zeta_array[i-1]
+        zeta_curr = zeta_array[i - 1]
         zeta_next = zeta_array[i] if i < n_steps else zeta_curr
-        u[i, :] = rk4_step_numba(u[i-1, :], dt, W_S, W_A, tau, zeta_curr, zeta_next,
+        u[i, :] = rk4_step_numba(u[i - 1, :], dt, W_S, W_A, tau, zeta_curr, zeta_next,
                                  model_type, r_m, beta, x_r)
     return u
 
 # -----------------------------
-# Pattern overlaps (optional)
+# Pattern overlaps
 # -----------------------------
 
 @jit(nopython=True, cache=True, parallel=True)
