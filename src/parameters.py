@@ -54,7 +54,7 @@ apply_er_to_asymmetric = False  # Apply Erdős-Rényi to asymmetric component
 tau = 20.0              # Time constant for neural dynamics
 t_start = 0.0           # Simulation start time
 t_end = 8000.0           # Simulation end time
-dt = 0.4                # Time step for simulation output (increased for efficiency)
+dt = 0.2                # Time step for simulation output (increased for efficiency)
 
 # Performance optimization
 use_numba = True        # Enable Numba JIT compilation for large networks (N > 1000)
@@ -86,7 +86,7 @@ show_sim_plots = False  # Whether to show individual plots for each variable
 plot_connectivity_matrices = False,
 plot_heatmap= True,
 verbose = False
-single_dir_name = "simulation_results_new"
+single_dir_name = "simulation_results_new_half"
 multiple_dir_name = "multiple_simulations"
 
 # Number of runs

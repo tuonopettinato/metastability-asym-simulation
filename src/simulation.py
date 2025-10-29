@@ -300,8 +300,8 @@ def simulation():
 
         # Prepare g function parameters
         g_params = {
-            'q': g_q,
-            'x': g_x
+            'q_f': g_q,
+            'x_f': g_x
         }
 
         overlaps = calculate_pattern_overlaps(u,

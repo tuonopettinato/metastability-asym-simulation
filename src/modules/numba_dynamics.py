@@ -1,6 +1,6 @@
 """
-Numba-optimized neural network dynamics with OU Heun per mezzo-step.
-Matches dynamics.py exactly: no interpolation of zeta, full RK4.
+Numba-optimized neural network dynamics with stochastic Heun integration.
+Matches dynamics.py exactly: no interpolation of zeta.
 All arrays and computations are float32.
 """
 
@@ -11,7 +11,7 @@ from numba import njit, prange
 # Activation functions
 # -----------------------------
 @njit(cache=True)
-def sigmoid_numba(x, r_m=30.0, beta=1.0, x_r=0.0):
+def sigmoid_numba(x, r_m=1.0, beta=1.0, x_r=0.0):
     x = np.float32(x)
     r_m = np.float32(r_m)
     beta = np.float32(beta)
@@ -58,9 +58,7 @@ def matrix_vector_multiply_parallel(W, v):
 # Network dynamics
 # -----------------------------
 @njit(cache=True)
-def network_dynamics_recanatesi_numba(u, W_S, W_A, tau, zeta_value, r_m, beta, x_r):
-    tau = np.float32(tau)
-    zeta_value = np.float32(zeta_value)
+def network_dynamics_recanatesi(u, W_S, W_A, tau, zeta_value, r_m, beta, x_r):
     phi_u = apply_activation_sigmoid(u, r_m, beta, x_r)
     symmetric_input = matrix_vector_multiply_parallel(W_S, phi_u)
     asymmetric_input = matrix_vector_multiply_parallel(W_A, phi_u)
@@ -71,9 +69,7 @@ def network_dynamics_recanatesi_numba(u, W_S, W_A, tau, zeta_value, r_m, beta, x
     return du_dt
 
 @njit(cache=True)
-def network_dynamics_brunel_numba(u, W_S, W_A, tau, zeta_value, r_m, beta, x_r):
-    tau = np.float32(tau)
-    zeta_value = np.float32(zeta_value)
+def network_dynamics_brunel(u, W_S, W_A, tau, zeta_value, r_m, beta, x_r):
     symmetric_input = matrix_vector_multiply_parallel(W_S, u)
     asymmetric_input = matrix_vector_multiply_parallel(W_A, u)
     total_input = symmetric_input + zeta_value * asymmetric_input
@@ -82,15 +78,23 @@ def network_dynamics_brunel_numba(u, W_S, W_A, tau, zeta_value, r_m, beta, x_r):
     return du_dt
 
 # -----------------------------
-# OU Heun per mezzo-step
+# Stochastic Heun per mezzo-step
 # -----------------------------
 @njit(cache=True)
-def ou_heun_step_numba(z, dt_step, tau_zeta, zeta_bar, sigma_zeta, dW):
-    dt_step = np.float32(dt_step)
-    tau_zeta = np.float32(tau_zeta)
-    zeta_bar = np.float32(zeta_bar)
-    sigma_zeta = np.float32(sigma_zeta)
-    dW = np.float32(dW)
+def heun_step(u, dt, W_S, W_A, tau, zeta_value, model_type, r_m, beta, x_r, dW=None):
+    """
+    Heun stochastic step for network dynamics (RK2).
+    For deterministic part, dW is ignored (kept for OU compatibility).
+    """
+    du1 = network_dynamics_recanatesi(u, W_S, W_A, tau, zeta_value, r_m, beta, x_r) if model_type == 0 else \
+          network_dynamics_brunel(u, W_S, W_A, tau, zeta_value, r_m, beta, x_r)
+    u_predict = u + dt * du1
+    du2 = network_dynamics_recanatesi(u_predict, W_S, W_A, tau, zeta_value, r_m, beta, x_r) if model_type == 0 else \
+          network_dynamics_brunel(u_predict, W_S, W_A, tau, zeta_value, r_m, beta, x_r)
+    return u + 0.5 * dt * (du1 + du2)
+
+@njit(cache=True)
+def ou_heun_step(z, dt_step, tau_zeta, zeta_bar, sigma_zeta, dW):
     g = np.sqrt(np.float32(2.0)) * sigma_zeta / np.sqrt(tau_zeta)
     f_prev = -(z - zeta_bar) / tau_zeta
     z_pred = z + f_prev * dt_step + g * dW
@@ -99,7 +103,7 @@ def ou_heun_step_numba(z, dt_step, tau_zeta, zeta_bar, sigma_zeta, dW):
     return z_new
 
 # -----------------------------
-# Full network simulation with OU
+# Full network simulation (Heun stochastic)
 # -----------------------------
 @njit(cache=True)
 def simulate_network_numba(W_S, W_A, initial_condition, n_steps, dt, tau,
@@ -127,8 +131,8 @@ def simulate_network_numba(W_S, W_A, initial_condition, n_steps, dt, tau,
         if use_ou:
             dW1 = np.float32(np.random.normal(0.0, 1.0) * sqrt_half_dt)
             dW2 = np.float32(np.random.normal(0.0, 1.0) * sqrt_half_dt)
-            z_mid = ou_heun_step_numba(zeta_array[i-1], half_dt, tau_zeta, zeta_bar, sigma_zeta, dW1)
-            z_next = ou_heun_step_numba(z_mid, half_dt, tau_zeta, zeta_bar, sigma_zeta, dW2)
+            z_mid = ou_heun_step(zeta_array[i-1], half_dt, tau_zeta, zeta_bar, sigma_zeta, dW1)
+            z_next = ou_heun_step(z_mid, half_dt, tau_zeta, zeta_bar, sigma_zeta, dW2)
             zeta_array[i] = z_next
             zeta_n = zeta_array[i-1]
             zeta_m = z_mid
@@ -138,30 +142,18 @@ def simulate_network_numba(W_S, W_A, initial_condition, n_steps, dt, tau,
             z_next = np.float32(constant_zeta)
             zeta_array[i] = z_next
 
-        # --- RK4 for u using exact OU half-steps ---
-        u_n = u.copy()
-        if model_type == 0:
-            k1 = network_dynamics_recanatesi_numba(u_n, W_S, W_A, tau, zeta_n, r_m, beta, x_r) * dt
-            k2 = network_dynamics_recanatesi_numba(u_n + 0.5*k1, W_S, W_A, tau, zeta_m, r_m, beta, x_r) * dt
-            k3 = network_dynamics_recanatesi_numba(u_n + 0.5*k2, W_S, W_A, tau, zeta_m, r_m, beta, x_r) * dt
-            k4 = network_dynamics_recanatesi_numba(u_n + k3, W_S, W_A, tau, z_next, r_m, beta, x_r) * dt
-        else:
-            k1 = network_dynamics_brunel_numba(u_n, W_S, W_A, tau, zeta_n, r_m, beta, x_r) * dt
-            k2 = network_dynamics_brunel_numba(u_n + 0.5*k1, W_S, W_A, tau, zeta_m, r_m, beta, x_r) * dt
-            k3 = network_dynamics_brunel_numba(u_n + 0.5*k2, W_S, W_A, tau, zeta_m, r_m, beta, x_r) * dt
-            k4 = network_dynamics_brunel_numba(u_n + k3, W_S, W_A, tau, z_next, r_m, beta, x_r) * dt
-
-        u = u_n + (k1 + 2*k2 + 2*k3 + k4)/6.0
+        # --- Heun for network dynamics ---
+        u = heun_step(u, dt, W_S, W_A, tau, zeta_n, model_type, r_m, beta, x_r)
         u_hist[i, :] = u
 
     return u_hist, zeta_array
 
 # -----------------------------
-# Pattern overlaps (Numba)
+# Pattern overlaps
 # -----------------------------
 @njit(cache=True, parallel=True)
-def calculate_pattern_overlaps_numba(u, patterns, phi_params, g_params, use_g=True):
-    n_timepoints, n_neurons = u.shape
+def calculate_pattern_overlaps_numba(u_hist, patterns, phi_params, g_params, use_g=True):
+    n_steps, N = u_hist.shape
     n_patterns = patterns.shape[0]
 
     r_m_phi, beta_phi, x_r_phi = np.float32(phi_params[0]), np.float32(phi_params[1]), np.float32(phi_params[2])
@@ -171,16 +163,16 @@ def calculate_pattern_overlaps_numba(u, patterns, phi_params, g_params, use_g=Tr
     g_phi_patterns = np.empty_like(patterns, dtype=np.float32)
 
     for p in prange(n_patterns):
-        for i in range(n_neurons):
+        for i in range(N):
             phi_patterns[p, i] = sigmoid_numba(patterns[p, i], r_m_phi, beta_phi, x_r_phi)
             g_phi_patterns[p, i] = q_f if phi_patterns[p, i] > x_f else -(np.float32(1.0) - q_f)
 
-    overlaps = np.zeros((n_timepoints, n_patterns), dtype=np.float32)
+    overlaps = np.zeros((n_steps, n_patterns), dtype=np.float32)
 
-    for t_idx in prange(n_timepoints):
-        r = np.empty(n_neurons, dtype=np.float32)
-        for i in range(n_neurons):
-            r[i] = sigmoid_numba(u[t_idx, i], r_m_phi, beta_phi, x_r_phi)
+    for t_idx in prange(n_steps):
+        r = np.empty(N, dtype=np.float32)
+        for i in range(N):
+            r[i] = sigmoid_numba(u_hist[t_idx, i], r_m_phi, beta_phi, x_r_phi)
 
         mean_r = np.mean(r)
         var_r = np.var(r)
