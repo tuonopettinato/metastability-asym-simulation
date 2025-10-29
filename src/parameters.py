@@ -71,7 +71,7 @@ model_type = "recanatesi"   # Dynamics model: "recanatesi" or "brunel"
 
 # Ornstein-Uhlenbeck process parameters for ζ(t)
 use_ou = True          # Whether to use Ornstein-Uhlenbeck process for ζ(t)
-tau_zeta = 20.0          # OU time constant
+tau_zeta = 10.0          # OU time constant
 zeta_bar = 0.65          # OU mean value (0.6 for p = 5, q = 3)
 sigma_zeta = 0.65        # OU noise intensity (0.3 for p = 5, q = 3)
 constant_zeta = 1.     # Constant ζ value when OU is not used
@@ -86,7 +86,7 @@ show_sim_plots = False  # Whether to show individual plots for each variable
 plot_connectivity_matrices = False,
 plot_heatmap= True,
 verbose = False
-single_dir_name = "simulation_results_new_half"
+single_dir_name = "simulation_results_new"
 multiple_dir_name = "multiple_simulations"
 
 # Number of runs

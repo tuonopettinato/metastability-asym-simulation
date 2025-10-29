@@ -22,7 +22,7 @@ apply_er_to_asymmetric: False
 tau: 20.0
 t_start: 0.0
 t_end: 8000.0
-dt: 0.4
+dt: 0.2
 use_numba: True
 use_g: True
 init_cond_type: Near Memory Pattern

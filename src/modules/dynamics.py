@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from modules.activation import sigmoid_function, relu_function, step_function
 
 # ---------------------------
-# Ornstein-Uhlenbeck Heun per mezzo-passo
+# Ornstein-Uhlenbeck Heun (single-step sHeun)
 # ---------------------------
 def _ou_heun_step(z, dt_step, tau_zeta, zeta_bar, sigma_zeta, dW):
     g = np.sqrt(np.float32(2.0)) * np.float32(sigma_zeta) / np.sqrt(np.float32(tau_zeta))
@@ -52,12 +52,14 @@ def network_dynamics_recanatesi(u, W_S, W_A, activation_fn, tau, zeta_value=1.0)
     du_dt = (-u + W_S @ phi_u + zeta_value * (W_A @ phi_u)) / tau
     return du_dt.astype(np.float32)
 
+
 def network_dynamics_brunel(u, W_S, W_A, activation_fn, tau, zeta_value=1.0):
     tau = np.float32(tau)
     zeta_value = np.float32(zeta_value)
     total_input = W_S @ u + zeta_value * (W_A @ u)
     du_dt = (-u + activation_fn(total_input)) / tau
     return du_dt.astype(np.float32)
+
 
 def network_dynamics(u, W_S, W_A, activation_fn, tau, zeta_value=1.0, model_type="recanatesi"):
     if model_type == "recanatesi":
@@ -130,16 +132,13 @@ def simulate_network(W_S,
         zeta_bar = np.float32(ou_params['zeta_bar'])
         sigma_zeta = np.float32(ou_params['sigma_zeta'])
         zeta_array[0] = zeta_bar
-        half_dt = 0.5 * dt
-        sqrt_half_dt = np.sqrt(half_dt).astype(np.float32)
 
     for i in range(1, n_steps):
         if use_ou:
-            dW1 = np.float32(np.random.normal(0.0, 1.0) * sqrt_half_dt)
-            dW2 = np.float32(np.random.normal(0.0, 1.0) * sqrt_half_dt)
+            # single-step stochastic Heun for OU (sHeun canonical): one Wiener increment per dt
+            dW = np.float32(np.random.normal(0.0, 1.0) * np.sqrt(dt))
             z_n = zeta_array[i-1]
-            z_mid = _ou_heun_step(z_n, half_dt, tau_zeta, zeta_bar, sigma_zeta, dW1)
-            z_next = _ou_heun_step(z_mid, half_dt, tau_zeta, zeta_bar, sigma_zeta, dW2)
+            z_next = _ou_heun_step(z_n, dt, tau_zeta, zeta_bar, sigma_zeta, dW)
             zeta_array[i] = z_next
             zeta_n = z_n
         else:
@@ -147,7 +146,7 @@ def simulate_network(W_S,
             z_next = zeta_n
             zeta_array[i] = z_next
 
-        # Heun per u
+        # Heun per u (deterministic Heun using zeta at n for predictor, zeta_next for corrector)
         k1 = network_dynamics(u, W_S, W_A, activation_fn, tau, zeta_value=zeta_n, model_type=model_type)
         u_pred = u + dt * k1
         k2 = network_dynamics(u_pred, W_S, W_A, activation_fn, tau, zeta_value=z_next, model_type=model_type)
@@ -250,3 +249,4 @@ def plot_network_dynamics(t, u, zeta, neuron_indices=None, max_display=10,
 
     plt.tight_layout()
     return fig
+

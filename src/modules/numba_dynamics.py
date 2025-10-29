@@ -1,7 +1,7 @@
 """
 Numba-optimized neural network dynamics with stochastic Heun integration.
 Matches dynamics.py exactly: no interpolation of zeta.
-All arrays and computations are float32.
+All arrays and computations float32.
 """
 
 import numpy as np
@@ -78,14 +78,10 @@ def network_dynamics_brunel(u, W_S, W_A, tau, zeta_value, r_m, beta, x_r):
     return du_dt
 
 # -----------------------------
-# Stochastic Heun per mezzo-step
+# Stochastic Heun step (single-step)
 # -----------------------------
 @njit(cache=True)
 def heun_step(u, dt, W_S, W_A, tau, zeta_value, model_type, r_m, beta, x_r, dW=None):
-    """
-    Heun stochastic step for network dynamics (RK2).
-    For deterministic part, dW is ignored (kept for OU compatibility).
-    """
     du1 = network_dynamics_recanatesi(u, W_S, W_A, tau, zeta_value, r_m, beta, x_r) if model_type == 0 else \
           network_dynamics_brunel(u, W_S, W_A, tau, zeta_value, r_m, beta, x_r)
     u_predict = u + dt * du1
@@ -103,7 +99,7 @@ def ou_heun_step(z, dt_step, tau_zeta, zeta_bar, sigma_zeta, dW):
     return z_new
 
 # -----------------------------
-# Full network simulation (Heun stochastic)
+# Full network simulation (Heun single-step)
 # -----------------------------
 @njit(cache=True)
 def simulate_network_numba(W_S, W_A, initial_condition, n_steps, dt, tau,
@@ -123,26 +119,19 @@ def simulate_network_numba(W_S, W_A, initial_condition, n_steps, dt, tau,
         zeta_array[:] = np.float32(constant_zeta)
     else:
         zeta_array[0] = np.float32(zeta_bar)
-        half_dt = np.float32(0.5) * dt
-        sqrt_half_dt = np.sqrt(half_dt)
 
     for i in range(1, n_steps):
-        # --- compute zeta ---
         if use_ou:
-            dW1 = np.float32(np.random.normal(0.0, 1.0) * sqrt_half_dt)
-            dW2 = np.float32(np.random.normal(0.0, 1.0) * sqrt_half_dt)
-            z_mid = ou_heun_step(zeta_array[i-1], half_dt, tau_zeta, zeta_bar, sigma_zeta, dW1)
-            z_next = ou_heun_step(z_mid, half_dt, tau_zeta, zeta_bar, sigma_zeta, dW2)
+            dW = np.float32(np.random.normal(0.0, 1.0) * np.sqrt(dt))
+            z_n = zeta_array[i-1]
+            z_next = ou_heun_step(z_n, dt, tau_zeta, zeta_bar, sigma_zeta, dW)
             zeta_array[i] = z_next
-            zeta_n = zeta_array[i-1]
-            zeta_m = z_mid
+            zeta_n = z_n
         else:
             zeta_n = np.float32(constant_zeta)
-            zeta_m = np.float32(constant_zeta)
-            z_next = np.float32(constant_zeta)
+            z_next = zeta_n
             zeta_array[i] = z_next
 
-        # --- Heun for network dynamics ---
         u = heun_step(u, dt, W_S, W_A, tau, zeta_n, model_type, r_m, beta, x_r)
         u_hist[i, :] = u
 
