@@ -283,7 +283,8 @@ def simulation():
         x_r=phi_x_r,
         model_type=model_type,
         constant_zeta=constant_zeta if not use_ou else None,
-        use_numba=use_numba)
+        use_numba=use_numba,
+        seed=seed)
 
     logger.info("\nSimulation completed successfully!")
 
