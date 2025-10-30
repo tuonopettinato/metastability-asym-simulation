@@ -17,7 +17,7 @@ N = 1500               # Number of neurons (increased for Numba testing)
 p = 4                 # Number of patterns for symmetric component
 q = 4                  # Number of patterns for asymmetric component (q <= p)
 c = 0.1                # Connection probability (0-1) for Erdős-Rényi model
-A_S = 3.0              # Amplitude parameter for symmetric component (4.0 for p = 5, q = 3)
+A_S = 4.0              # Amplitude parameter for symmetric component (4.0 for p = 5, q = 3)
 
 # f and g function (step functions) parameters for connectivity generation
 f_q = .7              # Step value for f step function (0.7)
@@ -32,9 +32,9 @@ g_x = f_x              # Step threshold for g step function (3.0)
 # =============================================================================
 
 # φ (phi) function (sigmoid) parameters - used for both connectivity and dynamics
-phi_beta = 1.5                 # Steepness parameter for sigmoid function
+phi_beta = 1.5                 # Steepness parameter for sigmoid function (using 1.5)
 phi_r_m = 30.                  # Maximum firing rate for sigmoid function (using 30.0)
-phi_x_r = 2.0                  # Threshold parameter for sigmoid function
+phi_x_r = 2.0                  # Threshold parameter for sigmoid function (using 2.0)
 
 # Pattern distribution parameters
 pattern_mean = 0.0      # Mean of the Gaussian distribution for memory patterns
@@ -53,7 +53,7 @@ apply_er_to_asymmetric = False  # Apply Erdős-Rényi to asymmetric component
 # Time and integration parameters
 tau = 20.0              # Time constant for neural dynamics
 t_start = 0.0           # Simulation start time
-t_end = 30000.0           # Simulation end time
+t_end = 8000.0           # Simulation end time
 dt = 0.2                # Time step for simulation output (increased for efficiency)
 
 # Performance optimization
@@ -71,7 +71,7 @@ model_type = "recanatesi"   # Dynamics model: "recanatesi" or "brunel"
 
 # Ornstein-Uhlenbeck process parameters for ζ(t)
 use_ou = True          # Whether to use Ornstein-Uhlenbeck process for ζ(t)
-tau_zeta = 10.0          # OU time constant
+tau_zeta = 20.0          # OU time constant
 zeta_bar = 0.65          # OU mean value (0.6 for p = 5, q = 3)
 sigma_zeta = 0.65        # OU noise intensity (0.3 for p = 5, q = 3)
 constant_zeta = 1.     # Constant ζ value when OU is not used
@@ -86,6 +86,7 @@ show_sim_plots = False  # Whether to show individual plots for each variable
 plot_connectivity_matrices = False,
 plot_heatmap= False,
 verbose = False
+ou_threshold = 2.  # Threshold for highlighting OU noise in plots
 single_dir_name = "simulation_results_new_half"
 multiple_dir_name = "multiple_simulations_new"
 

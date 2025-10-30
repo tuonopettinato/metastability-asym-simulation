@@ -68,6 +68,7 @@ def simulation():
     plot_heatmap,
     single_dir_name,
     verbose,
+    ou_threshold,
 
     # Seed for reproducibility
     seed
@@ -464,154 +465,145 @@ def simulation():
 
     # Create complete 2x2 figure AND individual plots
     logger.info(f"\nCreating dynamics figure and individual plots...")
-    
-    # Create 2x2 subplot figure
-    fig, axs = plt.subplots(2, 2, figsize=(15, 10))
-    
-    # 1. Neural Currents (top-left)
-    n_plot = min(n_display, N)
-    ax = axs[0, 0]
+
+    figs = {}
+    titles = ['neural_currents', 'firing_rates', 'ou_process', 'pattern_overlaps']
+
+    # =====================================
+    # 1. Neural Currents
+    # =====================================
+    logger.info("Plotting neural currents...")
+    n_plot = min(n_display, u.shape[1])
+    fig, ax = plt.subplots(figsize=(10, 6))
     for i in range(n_plot):
-        ax.plot(t, u[:, i], alpha=0.7, label=f'u_{i+1}')
-    ax.set_xlabel('$t$', fontsize = 20)
-    ax.set_ylabel('$u_i$', fontsize = 20)
-    # ax.set_title(f'Neural Currents $u_i$ (first {n_plot} neurons)')
+        ax.plot(t, u[:, i], alpha=0.7, label=f'$u_{{{i+1}}}$')
+    ax.set_xlabel('$t$', fontsize=20)
+    ax.set_ylabel('$u_i$', fontsize=20)
     ax.grid(True)
     if n_plot <= 5:
-        ax.legend()
+        ax.legend(fontsize=16)
+    figs[titles[0]] = (fig, ax)
+    path = os.path.join(output_dir, f"{titles[0]}.png")
+    fig.savefig(path, dpi=300)
+    plt.close(fig)
+    logger.info(f"Saved {titles[0]} → {path}")
 
-    # 2. Firing Rates (top-right)
-    ax = axs[0, 1]
+    # =====================================
+    # 2. Firing Rates
+    # =====================================
+    logger.info("Plotting firing rates...")
+    fig, ax = plt.subplots(figsize=(10, 6))
     for i in range(n_plot):
-        ax.plot(t, phi_u[:, i], alpha=0.7, label=f'φ(u_{i+1})')
-    ax.set_xlabel('$t$', fontsize = 20)
-    ax.set_ylabel('FR', fontsize = 20)
-    # ax.set_title(f'Firing Rates φ($u_i$) (first {n_plot} neurons)')
+        ax.plot(t, phi_u[:, i], alpha=0.7, label=f'$\\phi(u_{{{i+1}}})$')
+    ax.set_xlabel('$t$', fontsize=20)
+    ax.set_ylabel('FR', fontsize=20)
     ax.grid(True)
     if n_plot <= 5:
-        ax.legend()
+        ax.legend(fontsize=16)
+    figs[titles[1]] = (fig, ax)
+    path = os.path.join(output_dir, f"{titles[1]}.png")
+    fig.savefig(path, dpi=300)
+    plt.close(fig)
+    logger.info(f"Saved {titles[1]} → {path}")
 
-    # 3. OU Process (bottom-right)
-    ax = axs[1, 0]
+    # =====================================
+    # 3. OU Process
+    # =====================================
+    logger.info("Plotting OU process...")
+    fig, ax = plt.subplots(figsize=(10, 6))
     try:
         if zeta_array.size == 1:
-            # Constant zeta case
             zeta_val = float(zeta_array.item())
             ax.axhline(y=zeta_val, color='r', linestyle='-', linewidth=2)
             ax.set_ylim([zeta_val - 0.1, zeta_val + 0.1])
-            ax.set_title(f'Control Signal ζ(t) = {zeta_val:.2f} (constant)')
+            legend_label = f'$\\zeta(t)={zeta_val:.2f}$ (constant)'
         else:
-            # Time-varying zeta case with OU parameters in legend
             if use_ou and ou_params is not None:
-                # Include OU parameters in legend
                 tau_zeta_val = ou_params.get('tau_zeta', tau_zeta)
                 zeta_bar_val = ou_params.get('zeta_bar', zeta_bar)
                 sigma_zeta_val = ou_params.get('sigma_zeta', sigma_zeta)
                 legend_label = f'$τ_ζ$={tau_zeta_val:.2f}, $\\bar{{ζ}}$={zeta_bar_val:.2f}, $σ_ζ$={sigma_zeta_val:.2f}'
-                # set up an array with spikes of the OU process over a threshold (2.0)
-                spikes = np.where(zeta_array > 2.0)[0]
-                # ax.set_title('Ornstein-Uhlenbeck Control Signal ζ(t)')
             else:
-                legend_label = 'ζ(t)'
-                # ax.set_title('Control Signal ζ(t)')
-            # plot a line at 2
-            ax.axhline(y=2.0, color='gray', alpha=0.5)
+                legend_label = '$\\zeta(t)$'
             ax.plot(t, zeta_array, color='k', linewidth=1.5, label=legend_label)
-            ax.legend(fontsize = 18)
-
-        ax.set_xlabel('$t$', fontsize = 20)
-        ax.set_ylabel('$\\zeta(t)$', fontsize = 20)
+            ax.legend(fontsize=16)
+        ax.set_xlabel('$t$', fontsize=20)
+        ax.set_ylabel('$\\zeta(t)$', fontsize=20)
         ax.grid(True)
+        figs[titles[2]] = (fig, ax)
+        path = os.path.join(output_dir, f"{titles[2]}.png")
+        fig.savefig(path, dpi=300)
+        plt.close(fig)
+        logger.info(f"Saved {titles[2]} → {path}")
     except Exception as e:
-        logger.error(f"Warning: Could not create ζ(t) plot - {e}")
-        ax.text(0.5, 0.5, f'OU Process Error: {e}', ha='center', va='center', transform=ax.transAxes)
-        ax.set_title('OU Process')
-    
-    # 4. Pattern Overlaps (bottom-left)
-    ax = axs[1, 1]
-    # plot spikes if OU process had spikes
-    if spikes.size > 0:
-        for spike_time in t[spikes]:
-            ax.axvline(x=spike_time, color='gray', linestyle='--', alpha=0.3)
-    # plot a line at 0.8
-    ax.axhline(y=0.8, color='gray', alpha=0.5)
-    if p > 0 and overlaps is not None:
+        logger.error(f"OU plot error: {e}")
+
+    # =====================================
+    # 4. Pattern Overlaps
+    # =====================================
+    logger.info("Plotting pattern overlaps...")
+    fig, ax = plt.subplots(figsize=(10, 6))
+    # plot the times when the ou noise is above the threshold
+    if zeta_array is not None:
+        above_threshold = zeta_array > ou_threshold
+        ax.fill_between(t, -0.1, 1.1, where=above_threshold, color='lightgray', alpha=0.7, ls = 'dashed', transform=ax.get_xaxis_transform())
+    if overlaps is not None and overlaps.shape[1] > 0:
+        p = overlaps.shape[1]
         for i in range(p):
             ax.plot(t, overlaps[:, i], label=f'P {i+1}', linewidth=2)
-        ax.set_xlabel('$t$', fontsize = 20)
-        ax.set_ylabel('Overlaps', fontsize = 20)
-        # ax.set_title(f'Memory Pattern Overlaps (A={A_S}, seed = {seed})')
+        ax.axhline(y=0.8, color='gray', alpha=0.5)
+        ax.set_xlabel('$t$', fontsize=20)
+        ax.set_ylabel('Overlaps', fontsize=20)
         ax.grid(False)
-        ax.legend()
+        ax.legend(fontsize=16)
     else:
         ax.text(0.5, 0.5, 'No patterns to display', ha='center', va='center', transform=ax.transAxes)
-        ax.set_title('Pattern Overlaps')
-    
-    plt.tight_layout()
-    
-    # Save complete 2x2 figure
-    complete_fig_path = os.path.join(output_dir, "complete_simulation_results.png")
-    plt.savefig(complete_fig_path, dpi=300)
-    
-    # Extract and save individual plots from the 2x2 figure
-    titles = ['neural_currents', 'firing_rates', 'ou_process', 'pattern_overlaps']
-    
-    for i, ax in enumerate(axs.flat):
-        fig_single, ax_single = plt.subplots(figsize=(10, 6))
-        
-        # Copy all lines from original subplot
-        for line in ax.get_lines():
-            ax_single.plot(line.get_xdata(), line.get_ydata(), 
-                          label=line.get_label(), color=line.get_color(),
-                          alpha=line.get_alpha() if line.get_alpha() is not None else 1.0, 
-                          linewidth=line.get_linewidth())
-        
-        # Copy title, labels, and legend
-        # ax_single.set_title(ax.get_title())
-        ax_single.set_xlabel(ax.get_xlabel(), fontsize = 20)
-        ax_single.set_ylabel(ax.get_ylabel(), fontsize = 20)
-        ax_single.grid(False)
-        
-        # Add legend if original had one
-        if ax.get_legend() is not None:
-            ax_single.legend(fontsize = 18)
-        
-        # Copy text annotations if any
-        for text in ax.texts:
-            ax_single.text(text.get_position()[0], text.get_position()[1], 
-                          text.get_text(), ha=text.get_ha(), va=text.get_va(),
-                          transform=ax_single.transAxes if text.get_transform() == ax.transAxes else ax_single.transData)
-        
-        # Copy axis limits for proper scaling
-        ax_single.set_xlim(ax.get_xlim())
-        ax_single.set_ylim(ax.get_ylim())
-        
-        plt.tight_layout()
-        
-        # Save individual plot
-        fig_single.savefig(os.path.join(output_dir, f"{titles[i]}.png"), dpi=300)
-        plt.close(fig_single)  # Close to free memory
-        
-        if plot_heatmap:
-            # Plot the firing rates of ALL neurons as a heatmap in another figure
-            plt.figure(figsize=(10, 6))
-            plt.imshow(phi_u.T, aspect='auto', cmap='viridis', origin='lower')
-            plt.colorbar(label='FR')
-            plt.title(f'Firing Rates of all {N} neurons')
-            plt.xlabel('Time')
-            plt.ylabel('Neuron Index')
-            plt.tight_layout()
-            plt.savefig(os.path.join(output_dir, "firing_rates_heatmap.png"), dpi=300) # Save heatmap
-            plt.close()
-        else: None
+    figs[titles[3]] = (fig, ax)
+    path = os.path.join(output_dir, f"{titles[3]}.png")
+    fig.savefig(path, dpi=300)
+    plt.close(fig)
+    logger.info(f"Saved {titles[3]} → {path}")
 
-    logger.info(f"Saved complete figure: complete_simulation_results.png")
-    logger.info(f"Saved individual plots: {', '.join([f'{title}.png' for title in titles])}")
-    if show_sim_plots:
-        plt.show()
-    else:
-        logger.info("Plots not displayed, only saved to files.")
-    plt.close('all')  # Close all figures to free memory
+    # =====================================
+    # Optional Heatmap
+    # =====================================
+    if plot_heatmap == True:
+        logger.info("Plotting firing rate heatmap...")
+        fig, ax = plt.subplots(figsize=(10, 6))
+        im = ax.imshow(phi_u.T, aspect='auto', cmap='viridis', origin='lower')
+        plt.colorbar(im, ax=ax, label='FR')
+        ax.set_xlabel('Time', fontsize=18)
+        ax.set_ylabel('Neuron Index', fontsize=18)
+        path = os.path.join(output_dir, "firing_rates_heatmap.png")
+        fig.savefig(path, dpi=300)
+        plt.close(fig)
+        logger.info(f"Saved firing_rates_heatmap → {path}")
+
+    # =====================================
+    # 5. Build 2x2 composite figure
+    # =====================================
+    logger.info("Building 2×2 composite summary figure...")
+    fig, axs = plt.subplots(2, 2, figsize=(15, 10))
+    for idx, key in enumerate(titles):
+        r, c = divmod(idx, 2)
+        src_fig, src_ax = figs[key]
+        ax = axs[r, c]
+        for line in src_ax.get_lines():
+            ax.plot(line.get_xdata(), line.get_ydata(),
+                    label=line.get_label(), color=line.get_color(),
+                    linewidth=line.get_linewidth(), alpha=line.get_alpha() or 1.0)
+        ax.set_xlabel(src_ax.get_xlabel())
+        ax.set_ylabel(src_ax.get_ylabel())
+        if src_ax.get_legend() is not None:
+            ax.legend(fontsize=12)
+        ax.grid(True)
+    plt.tight_layout()
+    complete_fig_path = os.path.join(output_dir, "complete_simulation_results.png")
+    fig.savefig(complete_fig_path, dpi=300)
+    plt.close(fig)
+    logger.info(f"Saved composite figure → {complete_fig_path}")
+
+    plt.close('all')  # making sure to close all figures to free memory
     time_end = time.time()
     elapsed_time = time_end - time_start
     logger.info(f"\nTotal execution time: {elapsed_time:.2f} seconds")

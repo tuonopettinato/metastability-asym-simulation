@@ -68,17 +68,18 @@ def compute_cross_correlation(firing_file, ou_file, max_lag_steps):
 
 def cross_correlation_multi_run(firing_dir, ou_dir, max_lag_ms=1000):
     """Compute average cross-correlation across runs."""
-    files = sorted([f for f in os.listdir(firing_dir) if f.endswith(".npy")])
+    files_firing = sorted([f for f in os.listdir(firing_dir) if f.endswith(".npy")])
+    files_ou = sorted([f for f in os.listdir(ou_dir) if f.endswith(".npy")])
     lag_steps = int(max_lag_ms / (dt * 1000))
     lags = np.arange(-lag_steps, lag_steps + 1) * dt
 
     corr_list = []
 
-    for fname in files:
-        firing_file = os.path.join(firing_dir, fname)
-        ou_file = os.path.join(ou_dir, fname)
+    for fname_firing, fname_ou in zip(files_firing, files_ou):
+        firing_file = os.path.join(firing_dir, fname_firing)
+        ou_file = os.path.join(ou_dir, fname_ou)
         if not os.path.exists(ou_file):
-            print(f"[!] Missing OU file for {fname}")
+            print(f"[!] Missing OU file for {fname_ou}, skipping...")
             continue
 
         corr = compute_cross_correlation(firing_file, ou_file, lag_steps)
@@ -96,7 +97,7 @@ def cross_correlation_multi_run(firing_dir, ou_dir, max_lag_ms=1000):
 # Plot
 # ----------------------------
 if __name__ == "__main__":
-    max_lag_ms = 1000  # adjust window for cross-correlation
+    max_lag_ms = 2000  # adjust window for cross-correlation
     lags, corr_mean, corr_std = cross_correlation_multi_run(firing_dir, ou_dir, max_lag_ms=max_lag_ms)
 
     plt.figure(figsize=(8, 4))

@@ -431,18 +431,30 @@ def plot_matrix(matrix, title, cmap='RdBu_r', ax=None):
     else:
         fig = None
 
-    # Find the maximum absolute value for symmetric color scaling
-    vmax = np.max(np.abs(matrix))
+    # Replace NaN or inf with zeros to avoid plotting issues
+    if not np.isfinite(matrix).all():
+        matrix = np.nan_to_num(matrix, nan=0.0, posinf=0.0, neginf=0.0)
+
+    # Compute symmetric normalization range
+    vmax = float(np.max(np.abs(matrix)))
+    if vmax <= 0 or not np.isfinite(vmax):
+        vmax = 1e-9  # Prevent TwoSlopeNorm from crashing
+
     norm = TwoSlopeNorm(vmin=-vmax, vcenter=0, vmax=vmax)
 
     # Create the heatmap
-    sns.heatmap(matrix,
-                cmap=cmap,
-                norm=norm,
-                ax=ax,
-                cbar_kws={"label": "Weight Value"})
+    sns.heatmap(
+        matrix,
+        cmap=cmap,
+        norm=norm,
+        ax=ax,
+        cbar_kws={"label": "Weight Value"},
+        square=True,
+        xticklabels=False,
+        yticklabels=False
+    )
 
-    ax.set_title(title)
+    ax.set_title(title, fontsize=14)
     ax.set_xlabel("Neuron j")
     ax.set_ylabel("Neuron i")
 
