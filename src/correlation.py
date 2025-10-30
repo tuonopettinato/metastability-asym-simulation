@@ -1,13 +1,12 @@
 """
-Analyze the relationship between noise (ζ) and the variation of pattern overlaps using cross-correlation.
-Load ζ and firing rate files from disk, compute overlaps, and correlate with lag.
+Cross-correlation between ζ(t) and pattern overlaps ΔO(t) across multiple runs.
+Each run has its own 'firing_rates/*.npy' and 'ou_process/*.npy'.
 """
 
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 from modules.dynamics import calculate_pattern_overlaps
-from modules.activation import sigmoid_function
 from parameters import (
     N,
     dt,
@@ -18,16 +17,16 @@ from parameters import (
     g_x,
     use_numba,
     use_g,
-    multiple_dir_name,
-    single_dir_name
+    multiple_dir_name
 )
 
 # ----------------------------
 # Paths
 # ----------------------------
-patterns_path = os.path.join(os.path.dirname(__file__), "..", f'{single_dir_name}', 'npy', 'memory_patterns.npy')
-firing_rates_path = os.path.join(os.path.dirname(__file__), "..", f'{single_dir_name}', 'npy', 'firing_rates')
-zeta_path = os.path.join(os.path.dirname(__file__), "..", f'{single_dir_name}', 'npy', 'ou_process.npy')
+base_dir = os.path.join(os.path.dirname(__file__), "..", f"{multiple_dir_name}_{N}", "npy")
+patterns_path = os.path.join(base_dir, "memory_patterns.npy")
+firing_dir = os.path.join(base_dir, "firing_rates")
+ou_dir = os.path.join(base_dir, "ou_process")
 
 # ----------------------------
 # Phi and g function parameters
@@ -36,86 +35,78 @@ phi_params = {'r_m': phi_r_m, 'beta': phi_beta, 'x_r': phi_x_r}
 g_params = {'q_f': g_q, 'x_f': g_x}
 
 # ----------------------------
-# Load patterns
+# Load memory patterns
 # ----------------------------
 eta = np.load(patterns_path)
 
 # ----------------------------
-# Cross-correlation analysis using variation of overlaps
+# Cross-correlation on ΔO
 # ----------------------------
-def cross_correlation_analysis(firing_dir, zeta_file, max_lag_ms=500, use_derivative=True):
-    """
-    Compute cross-correlation between zeta(t) and variation of pattern overlaps.
-    
-    Parameters
-    ----------
-    firing_dir : str
-        Directory containing firing rate files (.npy)
-    zeta_file : str
-        File containing zeta(t) array
-    max_lag_ms : int
-        Maximum lag to consider in milliseconds (will be converted using dt)
-    use_derivative : bool
-        If True, correlate ζ(t) with temporal derivative of overlaps
-    
-    Returns
-    -------
-    lags : np.ndarray
-        Lag vector in time units
-    corr_mean : np.ndarray
-        Cross-correlation averaged over all files
-    """
-    # load zeta
-    zeta = np.load(zeta_file)
-    
-    fnames = [f for f in os.listdir(firing_dir) if f.endswith(".npy")]
-    corr_all = []
-    
-    n_lag = int(max_lag_ms / (dt * 1000))  # convert ms to steps
-    lags = np.arange(-n_lag, n_lag + 1) * dt
-    
-    for fname in fnames:
-        firing = np.load(os.path.join(firing_dir, fname))
-        overlaps = calculate_pattern_overlaps(firing, eta, phi_params, g_params, use_numba=use_numba, use_g=use_g)
-        
-        # mean over patterns
-        overlaps_mean = overlaps.mean(axis=1)
-        
-        if use_derivative:
-            # temporal derivative to capture variation
-            overlaps_var = np.gradient(overlaps_mean, dt)
-        else:
-            overlaps_var = overlaps_mean
-        
-        # standardize
-        z_std = (zeta - np.mean(zeta)) / np.std(zeta)
-        o_std = (overlaps_var - np.mean(overlaps_var)) / np.std(overlaps_var)
-        
-        # full cross-correlation
-        corr = np.correlate(o_std, z_std, mode='full') / len(z_std)
-        
-        # select only lags within ±n_lag
-        center = len(corr) // 2
-        corr_all.append(corr[center - n_lag:center + n_lag + 1])
-    
-    # average across files
-    corr_mean = np.mean(np.stack(corr_all, axis=0), axis=0)
-    
-    return lags, corr_mean
+def compute_cross_correlation(firing_file, ou_file, max_lag_steps):
+    """Compute normalized cross-correlation between ΔO(t) and ζ(t)."""
+    firing = np.load(firing_file)
+    zeta = np.load(ou_file)
+
+    # compute overlaps and average over patterns
+    overlaps = calculate_pattern_overlaps(firing, eta, phi_params, g_params,
+                                          use_numba=use_numba, use_g=use_g)
+    O_mean = overlaps.mean(axis=1)
+
+    # compute ΔO(t)
+    dO = np.diff(O_mean)
+    z = zeta[:len(dO)]  # align lengths
+
+    # standardize
+    dO_std = (dO - dO.mean()) / dO.std()
+    z_std = (z - z.mean()) / z.std()
+
+    # full correlation
+    corr = np.correlate(dO_std, z_std, mode="full") / len(z_std)
+    center = len(corr) // 2
+    return corr[center - max_lag_steps:center + max_lag_steps + 1]
+
+
+def cross_correlation_multi_run(firing_dir, ou_dir, max_lag_ms=1000):
+    """Compute average cross-correlation across runs."""
+    files = sorted([f for f in os.listdir(firing_dir) if f.endswith(".npy")])
+    lag_steps = int(max_lag_ms / (dt * 1000))
+    lags = np.arange(-lag_steps, lag_steps + 1) * dt
+
+    corr_list = []
+
+    for fname in files:
+        firing_file = os.path.join(firing_dir, fname)
+        ou_file = os.path.join(ou_dir, fname)
+        if not os.path.exists(ou_file):
+            print(f"[!] Missing OU file for {fname}")
+            continue
+
+        corr = compute_cross_correlation(firing_file, ou_file, lag_steps)
+        corr_list.append(corr)
+
+    if len(corr_list) == 0:
+        raise RuntimeError("No valid runs found for correlation analysis.")
+
+    corr_mean = np.mean(np.stack(corr_list), axis=0)
+    corr_std = np.std(np.stack(corr_list), axis=0)
+    return lags, corr_mean, corr_std
+
 
 # ----------------------------
 # Plot
 # ----------------------------
 if __name__ == "__main__":
-    lags, corr_mean = cross_correlation_analysis(firing_rates_path, zeta_path, max_lag_ms=500, use_derivative=True)
-    
-    plt.figure(figsize=(8,4))
-    plt.plot(lags, corr_mean, color='b')
-    plt.axvline(0, color='k', linestyle='--', label='zero lag')
+    max_lag_ms = 1000  # adjust window for cross-correlation
+    lags, corr_mean, corr_std = cross_correlation_multi_run(firing_dir, ou_dir, max_lag_ms=max_lag_ms)
+
+    plt.figure(figsize=(8, 4))
+    plt.plot(lags, corr_mean, label="Mean correlation", color='b')
+    plt.fill_between(lags, corr_mean - corr_std, corr_mean + corr_std, color='b', alpha=0.3, label="±1 std")
+    plt.axvline(0, color='k', linestyle='--', label='Zero lag')
     plt.xlabel("Lag [s]")
-    plt.ylabel("Cross-correlation")
-    plt.title("Average cross-correlation between ζ(t) and variation of pattern overlaps")
+    plt.ylabel("Correlation (ΔO vs ζ)")
+    plt.title(f"Cross-correlation across runs (window={max_lag_ms} ms)")
     plt.grid(True)
     plt.legend()
+    plt.tight_layout()
     plt.show()
-# -----------------------------

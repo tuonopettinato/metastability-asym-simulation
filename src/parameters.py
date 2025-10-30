@@ -17,7 +17,7 @@ N = 1500               # Number of neurons (increased for Numba testing)
 p = 4                 # Number of patterns for symmetric component
 q = 4                  # Number of patterns for asymmetric component (q <= p)
 c = 0.1                # Connection probability (0-1) for Erdős-Rényi model
-A_S = 4.0              # Amplitude parameter for symmetric component (4.0 for p = 5, q = 3)
+A_S = 3.0              # Amplitude parameter for symmetric component (4.0 for p = 5, q = 3)
 
 # f and g function (step functions) parameters for connectivity generation
 f_q = .7              # Step value for f step function (0.7)
@@ -53,7 +53,7 @@ apply_er_to_asymmetric = False  # Apply Erdős-Rényi to asymmetric component
 # Time and integration parameters
 tau = 20.0              # Time constant for neural dynamics
 t_start = 0.0           # Simulation start time
-t_end = 8000.0           # Simulation end time
+t_end = 30000.0           # Simulation end time
 dt = 0.2                # Time step for simulation output (increased for efficiency)
 
 # Performance optimization
@@ -84,10 +84,10 @@ constant_zeta = 1.     # Constant ζ value when OU is not used
 n_display = 10             # Maximum number of neurons to display in plots (reduced for 10k)
 show_sim_plots = False  # Whether to show individual plots for each variable
 plot_connectivity_matrices = False,
-plot_heatmap= True,
+plot_heatmap= False,
 verbose = False
-single_dir_name = "simulation_results_new"
-multiple_dir_name = "multiple_simulations"
+single_dir_name = "simulation_results_new_half"
+multiple_dir_name = "multiple_simulations_new"
 
 # Number of runs
 runs = 3

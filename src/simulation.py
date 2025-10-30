@@ -520,7 +520,7 @@ def simulation():
             ax.legend(fontsize = 18)
 
         ax.set_xlabel('$t$', fontsize = 20)
-        ax.set_ylabel('$\zeta(t)$', fontsize = 20)
+        ax.set_ylabel('$\\zeta(t)$', fontsize = 20)
         ax.grid(True)
     except Exception as e:
         logger.error(f"Warning: Could not create ζ(t) plot - {e}")

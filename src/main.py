@@ -124,8 +124,8 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
 
         # Prepare g function parameters
         g_params = {
-            'q': g_q,
-            'x': g_x
+            'q_f': g_q,
+            'x_f': g_x
         }
 
         overlaps = calculate_pattern_overlaps(u,
@@ -147,6 +147,15 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
     # Calculate and save firing rates
     phi_u = sigmoid_function(u, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
     np.save(os.path.join(npy_dir, "firing_rates" , f'{"firing_rates_"}{addition}{".npy"}'), phi_u)
+
+    # Save OU process
+    zeta_array = np.asarray(zeta)
+    if zeta_array.size == 1:
+        # Save constant zeta as array
+        zeta_full = np.full_like(t, float(zeta_array.item()))
+        np.save(os.path.join(npy_dir, "ou_process" , f'{"ou_process_"}{addition}{".npy"}'), zeta_full)
+    else:
+        np.save(os.path.join(npy_dir, "ou_process" , f'{"ou_process_"}{addition}{".npy"}'), zeta_array)
 
     # # Save pattern overlaps if available
     # if p > 0 and overlaps is not None:
@@ -198,16 +207,21 @@ def multiple_simulations():
     firing_rates_dir = os.path.join(npy_dir, "firing_rates")
     os.makedirs(firing_rates_dir, exist_ok=True)
 
+    # ou process subdirectory
+    ou_process_dir = os.path.join(npy_dir, "ou_process")
+    os.makedirs(ou_process_dir, exist_ok=True)
+
     connectivity_path_symmetric = os.path.join(npy_dir, "connectivity_symmetric.npy")
     connectivity_path_asymmetric = os.path.join(npy_dir, "connectivity_asymmetric.npy")
     phi_eta_path = os.path.join(npy_dir, "phi_memory_patterns.npy")
+    eta_path = os.path.join(npy_dir, "memory_patterns.npy")
 
     def load_connectivity():
         W_S = np.load(connectivity_path_symmetric)
         W_A = np.load(connectivity_path_asymmetric)
         W = W_S + W_A
         phi_eta = np.load(phi_eta_path)
-        eta = inverse_sigmoid_function(phi_eta, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
+        eta = np.load(eta_path)
         logger.info(f"Imported connectivity matrices from {npy_dir}")
         return W_S, W_A, W, eta, phi_eta
     
