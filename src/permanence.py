@@ -96,8 +96,8 @@ phi_params = {
 
 # Prepare g function parameters
 g_params = {
-            'q': g_q,
-            'x': g_x
+            'q_f': g_q,
+            'x_f': g_x
         }
 
 eta = np.load(patterns_path)
