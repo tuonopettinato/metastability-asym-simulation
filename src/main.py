@@ -425,7 +425,7 @@ def multiple_simulations():
     np.save(os.path.join(npy_dir, "phi_memory_patterns.npy"), phi_eta)
     np.save(os.path.join(npy_dir, "memory_patterns.npy"), eta)
 
-    for seed_index in range(19, 19+runs):  # Run multiple simulations
+    for seed_index in range(24, 24+runs):  # Run multiple simulations
         # transform the number of the seed into a string called addition
         addition = str(seed_index)
         single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params, seed=seed_index, verbose=verbose)

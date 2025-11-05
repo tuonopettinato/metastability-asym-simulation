@@ -62,7 +62,7 @@ from parameters import (
     )
 
 def main():
-    output_dir = os.path.join(os.path.dirname(__file__), "..", "simulation_results_silly")
+    output_dir = os.path.join(os.path.dirname(__file__), "..", "simulation_results_new_half")
     npy_dir = os.path.join(output_dir, "npy")
 
     # Calculate and plot energy
@@ -85,7 +85,7 @@ def main():
     # compute energy for each pattern and print it
     pattern_energies, _, _ = compute_energy(W_symm, phi_memory_patterns, tau, phi_beta, phi_r_m, phi_x_r, activation_term=False)
     for i in range(pattern_energies.shape[0]):
-        print(f"Energy for pattern {i+1}: {pattern_energies[i]:.4f}")
+        print(f"Energy/N for pattern {i+1}: {pattern_energies[i]/N:.4f}")
 
     # energy trajectory (computing symm, asymm, total)
     E_symm_traj, syn_terms, act_terms = compute_energy(W_symm, h, tau, phi_beta, phi_r_m, phi_x_r, activation_term=True)
@@ -202,7 +202,7 @@ def main():
     axs[0].set_ylabel("Overlaps", fontsize=20)
     axs[0].legend(fontsize=18)
     axs[0].tick_params(axis='both', labelsize=18)
-    axs[0].set_xlim(4100, 5100)
+    axs[0].set_xlim(6000, 7500)
 
     axs[1].plot(t, proj_flux_symm/N, label='Symm', color='k', alpha=0.6)
     axs[1].plot(t, proj_flux_asymm/N, label='Asymm', color='k', ls='dotted')
@@ -211,7 +211,7 @@ def main():
     axs[1].set_xlabel("$t$", fontsize=20)
     axs[1].legend(fontsize=18)
     axs[1].tick_params(axis='both', labelsize=18)
-    axs[1].set_xlim(4100, 5100)
+    axs[1].set_xlim(6000, 7500)
 
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, "overlaps_and_projections.png"))

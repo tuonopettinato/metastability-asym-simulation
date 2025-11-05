@@ -53,7 +53,7 @@ apply_er_to_asymmetric = False  # Apply Erdős-Rényi to asymmetric component
 # Time and integration parameters
 tau = 20.0              # Time constant for neural dynamics
 t_start = 0.0           # Simulation start time
-t_end = 8000.0           # Simulation end time
+t_end = 30000.0           # Simulation end time
 dt = 0.2                # Time step for simulation output (increased for efficiency)
 
 # Performance optimization
@@ -88,7 +88,7 @@ plot_heatmap= False,
 verbose = False
 ou_threshold = 2.  # Threshold for highlighting OU noise in plots
 single_dir_name = "simulation_results_new_half"
-multiple_dir_name = "multiple_simulations_new"
+multiple_dir_name = "multiple_simulations"
 
 # Number of runs
 runs = 3

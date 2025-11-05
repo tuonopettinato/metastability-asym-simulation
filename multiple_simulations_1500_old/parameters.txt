@@ -20,13 +20,13 @@ apply_phi_to_patterns: True
 apply_er_to_asymmetric: False
 use_ou: True
 use_g: True
-tau_zeta: 10.0
+tau_zeta: 20.0
 zeta_bar: 0.65
 sigma_zeta: 0.65
 constant_zeta: None
 t_start: 0.0
-t_end: 30000.0
-dt: 0.2
+t_end: 8000.0
+dt: 0.4
 tau: 20.0
 init_cond_type: Near Memory Pattern
 pattern_idx: 1
