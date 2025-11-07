@@ -13,7 +13,7 @@ import os
 from scipy.__config__ import show
 
 # Network size and pattern parameters
-N = 5000               # Number of neurons (increased for Numba testing)
+N = 1500               # Number of neurons (increased for Numba testing)
 p = 4                 # Number of patterns for symmetric component
 q = 4                  # Number of patterns for asymmetric component (q <= p)
 c = 0.1                # Connection probability (0-1) for Erdős-Rényi model
@@ -39,7 +39,7 @@ phi_x_r = 2.0                  # Threshold parameter for sigmoid function (using
 # Pattern distribution parameters
 pattern_mean = 0.0      # Mean of the Gaussian distribution for memory patterns
 pattern_sigma = 1.0     # Standard deviation of the Gaussian distribution for memory patterns
-alpha = 1.0  # Memory pattern sparsity (0-1): fraction of active neurons per pattern
+alpha = 1.0             # Memory pattern sparsity (0-1): fraction of active neurons per pattern
 enforce_max_correlation = False  # Switch to enable correlation constraint enforcement
 max_correlation = 0.5  # Maximum allowed correlation between patterns (when enforcement enabled)
 apply_sigma_cutoff = False       # Apply 1σ cutoff to patterns
@@ -61,7 +61,7 @@ use_numba = True        # Enable Numba JIT compilation for large networks (N > 1
 use_g = True  # Whether to apply g function to patterns, default is True in Recanatesi et al.
 
 # Initial condition settings
-init_cond_type = "Negative Memory Pattern"  # Options: "Random", "Zero", "Memory Pattern", "Near Memory Pattern", "Negative Memory Pattern"
+init_cond_type = "Memory Pattern"  # Options: "Random", "Zero", "Memory Pattern", "Near Memory Pattern", "Negative Memory Pattern"
 pattern_idx = 1         # Which pattern to use (0-indexed) if using pattern-based init - neglected in multiple simulations
 noise_level = 0.5       # Noise level if using "Near Memory Pattern" init
 
@@ -75,7 +75,7 @@ ou_non_neg = True     # Whether to enforce non-negativity on ζ(t)
 tau_zeta = 20.0          # OU time constant
 zeta_bar = 0.7          # OU mean value (0.65)
 sigma_zeta = 0.55        # OU noise intensity (0.65)
-constant_zeta = 1.     # Constant ζ value when OU is not used
+constant_zeta = 0.    # Constant ζ value when OU is not used
 
 # =============================================================================
 # VISUALIZATION PARAMETERS

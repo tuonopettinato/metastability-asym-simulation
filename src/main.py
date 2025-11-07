@@ -55,6 +55,7 @@ from parameters import (
     use_numba,
     use_g,
     use_ou,
+    ou_non_neg,
     tau_zeta,
     zeta_bar,
     sigma_zeta,
@@ -90,8 +91,14 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
     plot_dir = os.path.join(output_dir, 'plots')
     npy_dir = os.path.join(output_dir, "npy")
 
+    # Prepare g function parameters
+    g_params = {
+        'q_f': g_q,
+        'x_f': g_x
+    }
+
     # Set up initial condition with proper noise calculation, no pattern index here (random)
-    initial_condition = initial_condition_creator(init_cond_type, N, p=p, eta=eta, noise_level=noise_level)
+    initial_condition = initial_condition_creator(init_cond_type, N, g_params=g_params, p=p, vec=phi_eta, noise_level=noise_level)
 
     # Run simulation with same φ parameters used in connectivity generation
     t, u, zeta = simulate_network(
@@ -108,7 +115,9 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
         x_r=phi_x_r,
         model_type=model_type,
         constant_zeta=constant_zeta if not use_ou else None,
-        use_numba=use_numba)
+        use_numba=use_numba,
+        ou_non_neg=ou_non_neg
+    )
 
     logger.info(f"\n {addition} - simulation completed successfully!")
 
@@ -120,12 +129,6 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
             'r_m': phi_r_m,
             'beta': phi_beta,
             'x_r': phi_x_r,
-        }
-
-        # Prepare g function parameters
-        g_params = {
-            'q_f': g_q,
-            'x_f': g_x
         }
 
         overlaps = calculate_pattern_overlaps(u,

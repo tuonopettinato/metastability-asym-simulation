@@ -56,6 +56,7 @@ def simulation():
     use_numba,
     use_g,
     use_ou,
+    ou_non_neg,
     tau_zeta,
     zeta_bar,
     sigma_zeta,
@@ -186,12 +187,19 @@ def simulation():
             "\nSkipping matrix plots for large network (N > 2000) or to save time and resources."
         )
 
+    # Prepare g function parameters
+    g_params = {
+        'q_f': g_q,
+        'x_f': g_x
+    }
+
     # Set up initial condition with proper noise calculation 
     initial_condition = initial_condition_creator(
         init_cond_type=init_cond_type,
         N=N,
+        g_params=g_params,
         p=p,
-        eta=eta,
+        xi=phi_eta,
         pattern_idx=pattern_idx,
         noise_level=noise_level,
         seed=seed+19
@@ -200,8 +208,7 @@ def simulation():
     # Simulation time span
     t_span = (t_start, t_end)
 
-    # Convert initial condition and time span to float32 =========================================
-    initial_condition = initial_condition.astype(np.float32)
+    # Convert time span to float32 =========================================
     t_span = (t_start, t_end)
     # ============================================================================================
 
@@ -298,12 +305,6 @@ def simulation():
             'r_m': phi_r_m,
             'beta': phi_beta,
             'x_r': phi_x_r
-        }
-
-        # Prepare g function parameters
-        g_params = {
-            'q_f': g_q,
-            'x_f': g_x
         }
 
         overlaps = calculate_pattern_overlaps(u,
@@ -547,9 +548,7 @@ def simulation():
     # plot the times when the ou noise is above the threshold
     if zeta_array is not None:
         above_threshold = zeta_array > ou_threshold
-        under_threshold = zeta_array <= -1
         ax.fill_between(t, -0.1, 1.1, where=above_threshold, color='lightgray', alpha=0.7, ls = 'dashed', transform=ax.get_xaxis_transform())
-        ax.fill_between(t, -0.1, 1.1, where=under_threshold, color='k', alpha=0.7, ls = 'dashed', transform=ax.get_xaxis_transform())
     if overlaps is not None and overlaps.shape[1] > 0:
         p = overlaps.shape[1]
         for i in range(p):

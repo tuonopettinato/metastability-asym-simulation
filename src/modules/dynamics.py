@@ -21,7 +21,7 @@ def _ou_heun_step(z, dt_step, tau_zeta, zeta_bar, sigma_zeta, dW):
 # ---------------------------
 # Initial conditions
 # ---------------------------
-def initial_condition_creator(init_cond_type, N, p=0, eta=None, pattern_idx=None, noise_level=0.5, seed=None):
+def initial_condition_creator(init_cond_type, N, g_params, p=0, xi=None, pattern_idx=None, noise_level=0.5, seed=None):
     if seed is not None:
         np.random.seed(seed)
     pattern_index = np.random.randint(0, p) if pattern_idx is None else pattern_idx
@@ -30,12 +30,14 @@ def initial_condition_creator(init_cond_type, N, p=0, eta=None, pattern_idx=None
     elif init_cond_type == "Zero":
         initial_condition = np.zeros(N)
     elif init_cond_type == "Memory Pattern":
-        initial_condition = eta[pattern_index].copy() if p > 0 and eta is not None else np.random.normal(0.0, 0.1, N)
+        initial_condition = xi[pattern_index].copy() if p > 0 and xi is not None else np.random.normal(0.0, 0.1, N)
+        initial_condition = step_function(initial_condition, **g_params)
     elif init_cond_type == "Negative Memory Pattern":
-        initial_condition = -eta[pattern_index].copy() if p > 0 and eta is not None else np.random.normal(0.0, 0.1, N)
+        initial_condition = -xi[pattern_index].copy() if p > 0 and xi is not None else np.random.normal(0.0, 0.1, N)
+        initial_condition = step_function(initial_condition, **g_params)
     else:  # Near Memory Pattern
-        if p > 0 and eta is not None:
-            pattern = eta[pattern_index % p]
+        if p > 0 and xi is not None:
+            pattern = xi[pattern_index % p]
             noise = np.random.normal(0.0, noise_level * np.std(pattern), N)
             initial_condition = pattern + noise
         else:
