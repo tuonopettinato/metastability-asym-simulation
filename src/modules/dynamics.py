@@ -86,14 +86,15 @@ def simulate_network(W_S,
                      model_type="recanatesi",
                      constant_zeta=1.0,
                      use_numba=False,
-                     seed=None):
+                     seed=None,
+                     ou_non_neg=True):
     if use_numba:
         try:
             from modules.numba_dynamics import simulate_network_numba
             return simulate_network_numba(W_S, W_A, t_span, dt, tau,
                                          initial_condition, use_ou, ou_params,
                                          r_m, beta, x_r, model_type,
-                                         constant_zeta, seed)
+                                         constant_zeta, seed, ou_non_neg=True)
         except Exception:
             # fallback Python
             pass
@@ -139,6 +140,7 @@ def simulate_network(W_S,
             dW = np.float32(np.random.normal(0.0, 1.0) * np.sqrt(dt))
             z_n = zeta_array[i-1]
             z_next = _ou_heun_step(z_n, dt, tau_zeta, zeta_bar, sigma_zeta, dW)
+            z_next = np.maximum(z_next, 0.0) if ou_non_neg else z_next # ensure zeta non-negative
             zeta_array[i] = z_next
             zeta_n = z_n
         else:

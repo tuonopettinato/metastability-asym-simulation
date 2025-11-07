@@ -105,7 +105,7 @@ def ou_heun_step(z, dt_step, tau_zeta, zeta_bar, sigma_zeta, dW):
 def simulate_network_numba(W_S, W_A, initial_condition, n_steps, dt, tau,
                            r_m, beta, x_r, model_type, use_ou,
                            tau_zeta=1.0, zeta_bar=1.0, sigma_zeta=0.0,
-                           constant_zeta=1.0, seed=None):
+                           constant_zeta=1.0, seed=None, ou_non_neg=True):
     if seed is not None:
         np.random.seed(seed)
 
@@ -125,6 +125,7 @@ def simulate_network_numba(W_S, W_A, initial_condition, n_steps, dt, tau,
             dW = np.float32(np.random.normal(0.0, 1.0) * np.sqrt(dt))
             z_n = zeta_array[i-1]
             z_next = ou_heun_step(z_n, dt, tau_zeta, zeta_bar, sigma_zeta, dW)
+            z_next = np.maximum(z_next, 0.0) if ou_non_neg else z_next  # ensure zeta non-negative
             zeta_array[i] = z_next
             zeta_n = z_n
         else:

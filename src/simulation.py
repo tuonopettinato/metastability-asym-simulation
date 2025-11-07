@@ -285,7 +285,8 @@ def simulation():
         model_type=model_type,
         constant_zeta=constant_zeta if not use_ou else None,
         use_numba=use_numba,
-        seed=seed)
+        seed=seed,
+        ou_non_neg=ou_non_neg)
 
     logger.info("\nSimulation completed successfully!")
 
@@ -546,7 +547,9 @@ def simulation():
     # plot the times when the ou noise is above the threshold
     if zeta_array is not None:
         above_threshold = zeta_array > ou_threshold
+        under_threshold = zeta_array <= -1
         ax.fill_between(t, -0.1, 1.1, where=above_threshold, color='lightgray', alpha=0.7, ls = 'dashed', transform=ax.get_xaxis_transform())
+        ax.fill_between(t, -0.1, 1.1, where=under_threshold, color='k', alpha=0.7, ls = 'dashed', transform=ax.get_xaxis_transform())
     if overlaps is not None and overlaps.shape[1] > 0:
         p = overlaps.shape[1]
         for i in range(p):

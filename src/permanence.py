@@ -19,9 +19,10 @@ from parameters import (
         multiple_dir_name
 )
 
-patterns_path = os.path.join(os.path.dirname(__file__), "..", f'{multiple_dir_name}{"_"}{N}', 'npy', 'memory_patterns.npy')
-firing_rates_path = os.path.join(os.path.dirname(__file__), "..", f'{multiple_dir_name}{"_"}{N}', 'npy', 'firing_rates')
-threshold = 0.5
+npy_path = os.path.join(os.path.dirname(__file__), "..", f'{multiple_dir_name}{"_"}{N}', 'npy')
+patterns_path = os.path.join(npy_path, 'memory_patterns.npy')
+firing_rates_path = os.path.join(npy_path, 'firing_rates')
+threshold = 0.6
 
 import numpy as np
 
@@ -141,18 +142,28 @@ def calculate_permanence_statistics(threshold=0.8, dt=None, file_path="firing_ra
     return np.mean(permanence_all), np.std(permanence_all), permanence_all
 
 if __name__ == "__main__":
-    mean_perm, std_perm, all_perm = calculate_permanence_statistics(threshold=threshold, dt=dt, file_path=firing_rates_path)
+    # check if permanence_times.npy already exists
+    if os.path.exists(os.path.join(npy_path, "permanence_times.npy")):
+        print("permanence_times.npy already exists. Loading data...")
+        all_perm = np.load(os.path.join(npy_path, "permanence_times.npy"))
+        mean_perm = np.mean(all_perm)
+        std_perm = np.std(all_perm)
+    else:
+        mean_perm, std_perm, all_perm = calculate_permanence_statistics(threshold=threshold, dt=dt, file_path=firing_rates_path)
     print(f"Mean permanence time above threshold {threshold}: {mean_perm:.2f}")
     print(f"Standard deviation of permanence times: {std_perm:.2f}")
     # draw the histogram of all permanence times
-    plt.axvline(mean_perm, color='r', linestyle='--', label='Mean')
-    plt.legend()
+    plt.axvline(mean_perm, color='r', linestyle='--', label='Mean = {:.2f}'.format(mean_perm))
     plt.hist(all_perm, bins=50, density=False)
-    plt.xlabel("Permanence time")
-    plt.ylabel("Counts")
-    plt.title(f"PTs (threshold={threshold}, Total={len(all_perm)}, Mean={mean_perm:.2f}, Std={std_perm:.2f})")
-    # plot the mean as a vertical line and standard deviation as shaded area
+    plt.xlabel("Dwell time", fontsize=20)
+    plt.ylabel("Counts", fontsize=20)
+    # fill between mean +/- std
+    plt.fill_betweenx([0, plt.ylim()[1]], np.maximum(mean_perm - std_perm, 0), mean_perm + std_perm, alpha=0.2, label=f"Std={std_perm:.2f}")
+    plt.title(f"Dwell Times (threshold={threshold}, total={len(all_perm)})", fontsize=20)
+    plt.legend(fontsize=18)
+    plt.savefig(os.path.join(npy_path, "..", "plots", "dwell.png"))
     plt.show()
+    np.save(os.path.join(npy_path, "permanence_times.npy"), all_perm)
 
 
 
