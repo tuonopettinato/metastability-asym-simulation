@@ -56,13 +56,14 @@ from parameters import (
     # Visualization parameters
     n_display,
     show_sim_plots,
+    single_dir_name,
 
     # Seed for reproducibility
     seed
     )
 
 def main():
-    output_dir = os.path.join(os.path.dirname(__file__), "..", "simulation_results_new_half")
+    output_dir = os.path.join(os.path.dirname(__file__), "..", f"{single_dir_name}")
     npy_dir = os.path.join(output_dir, "npy")
 
     # Calculate and plot energy

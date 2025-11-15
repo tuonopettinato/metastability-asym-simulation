@@ -60,7 +60,7 @@ def simulation():
     tau_zeta,
     zeta_bar,
     sigma_zeta,
-    constant_zeta,
+    fixed_zeta,
 
     # Visualization parameters
     n_display,
@@ -160,7 +160,7 @@ def simulation():
                 f"{correlation_matrix[i,j]:6.3f}"
                 for j in range(correlation_matrix.shape[1])
             ])
-            logger.info(f"  η{i+1}: [{row_str}]")
+            print(f"  η{i+1}: [{row_str}]")
 
     if N < 2001 and plot_connectivity_matrices: # Only plot matrices for smaller networks
         logger.info("\nPlotting connectivity matrices...")
@@ -192,17 +192,24 @@ def simulation():
         'q_f': g_q,
         'x_f': g_x
     }
+    # Prepare phi function parameters
+    phi_params = {
+        'r_m': phi_r_m,
+        'beta': phi_beta,
+        'x_r': phi_x_r
+    }
 
     # Set up initial condition with proper noise calculation 
     initial_condition = initial_condition_creator(
         init_cond_type=init_cond_type,
         N=N,
         g_params=g_params,
+        phi_params=phi_params,
         p=p,
-        xi=phi_eta,
+        eta=eta,
         pattern_idx=pattern_idx,
         noise_level=noise_level,
-        seed=seed+19
+        seed=seed+2 # + 19
     )
 
     # Simulation time span
@@ -224,7 +231,7 @@ def simulation():
         )
     else:
         ou_params = None
-        logger.info(f"Using constant ζ = {constant_zeta}")
+        logger.info(f"Using fixed ζ")
 
     # Choose which connectivity matrix to use
     if use_symmetric_only:
@@ -259,7 +266,7 @@ def simulation():
     zeta_bar = np.float32(zeta_bar)
     sigma_zeta = np.float32(sigma_zeta)
     tau_zeta = np.float32(tau_zeta)
-    constant_zeta = np.float32(constant_zeta)
+    fixed_zeta = np.ascontiguousarray(fixed_zeta, dtype=np.float32)
 
     # ===============================================
 
@@ -290,7 +297,7 @@ def simulation():
         beta=phi_beta,
         x_r=phi_x_r,
         model_type=model_type,
-        constant_zeta=constant_zeta if not use_ou else None,
+        fixed_zeta=fixed_zeta,
         use_numba=use_numba,
         seed=seed,
         ou_non_neg=ou_non_neg)
@@ -300,12 +307,6 @@ def simulation():
     # Calculate pattern overlaps
     overlaps = None
     if p > 0:
-        # Prepare phi function parameters
-        phi_params = {
-            'r_m': phi_r_m,
-            'beta': phi_beta,
-            'x_r': phi_x_r
-        }
 
         overlaps = calculate_pattern_overlaps(u,
                                               eta,
@@ -349,7 +350,7 @@ def simulation():
         'tau_zeta': tau_zeta if use_ou else None,  # Only include if using OU
         'zeta_bar': zeta_bar if use_ou else None,  # Only include if using OU
         'sigma_zeta': sigma_zeta if use_ou else None,  # Only include if using OU
-        'constant_zeta': constant_zeta if not use_ou else None,  # Only include if not using OU
+        'fixed_zeta': 'fixed (see code)' if not use_ou else None,  # Only include if not using OU
         't_start': t_start,
         't_end': t_end,
         'dt': dt,
@@ -371,12 +372,7 @@ def simulation():
     
     # Save OU process
     zeta_array = np.asarray(zeta)
-    if zeta_array.size == 1:
-        # Save constant zeta as array
-        zeta_full = np.full_like(t, float(zeta_array.item()))
-        np.save(os.path.join(npy_dir, "ou_process.npy"), zeta_full)
-    else:
-        np.save(os.path.join(npy_dir, "ou_process.npy"), zeta_array)
+    np.save(os.path.join(npy_dir, "ou_process.npy"), zeta_array)
     
     # Calculate and save firing rates
     np.save(os.path.join(npy_dir, "neural_currents.npy"), u)
@@ -514,21 +510,18 @@ def simulation():
     logger.info("Plotting OU process...")
     fig, ax = plt.subplots(figsize=(10, 6))
     try:
-        if zeta_array.size == 1:
-            zeta_val = float(zeta_array.item())
-            ax.axhline(y=zeta_val, color='r', linestyle='-', linewidth=2)
-            ax.set_ylim([zeta_val - 0.1, zeta_val + 0.1])
-            legend_label = f'$\\zeta(t)={zeta_val:.2f}$ (constant)'
+        if not use_ou:
+            legend_label = f'$\\zeta(t)$ (fixed)'
         else:
-            if use_ou and ou_params is not None:
+            if ou_params is not None:
                 tau_zeta_val = ou_params.get('tau_zeta', tau_zeta)
                 zeta_bar_val = ou_params.get('zeta_bar', zeta_bar)
                 sigma_zeta_val = ou_params.get('sigma_zeta', sigma_zeta)
                 legend_label = f'$τ_ζ$={tau_zeta_val:.2f}, $\\bar{{ζ}}$={zeta_bar_val:.2f}, $σ_ζ$={sigma_zeta_val:.2f}'
             else:
                 legend_label = '$\\zeta(t)$'
-            ax.plot(t, zeta_array, color='k', linewidth=1.5, label=legend_label)
-            ax.legend(fontsize=16)
+        ax.plot(t, zeta_array, color='k', linewidth=1.5, label=legend_label)
+        ax.legend(fontsize=16)
         ax.set_xlabel('$t$', fontsize=20)
         ax.set_ylabel('$\\zeta(t)$', fontsize=20)
         ax.grid(True)
@@ -547,6 +540,7 @@ def simulation():
     fig, ax = plt.subplots(figsize=(10, 6))
     # plot the times when the ou noise is above the threshold
     if zeta_array is not None:
+        ou_threshold = np.percentile(zeta_array, 90) # 90 percentile of zeta_array
         above_threshold = zeta_array > ou_threshold
         ax.fill_between(t, -0.1, 1.1, where=above_threshold, color='lightgray', alpha=0.7, ls = 'dashed', transform=ax.get_xaxis_transform())
     if overlaps is not None and overlaps.shape[1] > 0:

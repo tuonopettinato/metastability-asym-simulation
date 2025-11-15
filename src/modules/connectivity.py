@@ -9,7 +9,7 @@ from matplotlib.colors import TwoSlopeNorm
 from modules.activation import threshold_function, relu_function, sigmoid_function, step_function
 
 
-def _enforce_correlation_constraint(eta_patterns, max_correlation, alpha, pattern_mean, pattern_sigma, max_iterations=100):
+def _enforce_correlation_constraint(eta_patterns, max_correlation, pattern_mean, alpha, pattern_sigma, max_iterations=100):
     """
     Iteratively refine patterns to ensure pairwise correlations stay below max_correlation.
     
@@ -71,9 +71,9 @@ def _enforce_correlation_constraint(eta_patterns, max_correlation, alpha, patter
             # Perturb pattern j (keep pattern i as reference)
             random_noise = np.random.normal(0, noise_strength, N)
             eta_refined[j, :] += random_noise
-            
-            # Reapply sparsity constraint if alpha < 1.0
+
             if alpha < 1.0:
+                # Enforce sparsity after perturbation
                 sorted_indices = np.argsort(np.abs(eta_refined[j, :]))[::-1]
                 n_active = int(alpha * N)
                 inactive_indices = sorted_indices[n_active:]
@@ -231,9 +231,11 @@ def generate_connectivity_matrix(N,
         g_eta_j = g(eta[mu, :]).reshape(1, -1)  # Row vector
 
         # centering 
-        f_eta_i -= np.mean(f_eta_i)
-        g_eta_j -= np.mean(g_eta_j)
-        
+        # f_eta_i -= np.mean(f_eta_i)
+        # f_eta_i = f_eta_i/(np.std(f_eta_i) + 1e-12)
+        # g_eta_j -= np.mean(g_eta_j)
+        # g_eta_j = g_eta_j/(np.std(g_eta_j) + 1e-12)
+
         # Compute the matrix element-wise product and ensure symmetry
         product_matrix = np.outer(f_eta_i, g_eta_j)
         # symmetric_product = 0.5 * (product_matrix + product_matrix.T)

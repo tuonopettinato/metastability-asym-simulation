@@ -67,10 +67,10 @@ def step_function(x, q_f=1.0, x_f=0.0):
   Returns:
   --------
   y : array-like
-      Output values: q_f if x > x_f, -(1-q_f) otherwise
+      Output values: q_f if x > x_f, q_f - 1 otherwise
   """
   x = np.asarray(x)
-  y = np.where(x > x_f, q_f, -(1 - q_f))
+  y = np.where(x > x_f, q_f, q_f - 1.0)
   return y
 
 def inverse_sigmoid_function(x, r_m=1.0, beta=1.0, x_r=0.0):

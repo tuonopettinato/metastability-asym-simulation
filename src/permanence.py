@@ -26,7 +26,7 @@ threshold = 0.6
 
 import numpy as np
 
-def calculate_permanence_single_trial(overlaps, threshold=0.8, dt=None):
+def calculate_permanence_single_trial(overlaps, threshold=0.8, dt=None, smooth_window=5):
     """
     Compute permanence times for overlaps above a threshold,
     ensuring that each time point contributes to at most one pattern:
@@ -55,6 +55,14 @@ def calculate_permanence_single_trial(overlaps, threshold=0.8, dt=None):
 
     n_timepoints, n_patterns = overlaps.shape
     step_value = dt if dt is not None else 1.0
+
+    if smooth_window > 1:
+        # smoothing overlaps with a moving average of window size
+        window_size = smooth_window
+        cumsum = np.cumsum(np.insert(overlaps, 0, 0, axis=0), axis=0)
+        overlaps = (cumsum[window_size:] - cumsum[:-window_size]) / window_size
+    else:
+        None
 
     # Identify the pattern with the highest overlap at each time step
     max_indices = np.argmax(overlaps, axis=1)   # pattern index with max overlap
@@ -104,7 +112,7 @@ g_params = {
 eta = np.load(patterns_path)
 
 
-def calculate_permanence_statistics(threshold=0.8, dt=None, file_path="firing_rates"):
+def calculate_permanence_statistics(threshold=0.8, dt=None, file_path="firing_rates", smooth_window=5):
     """
     Calculate permanence time statistics for all overlap data in a directory.
 
@@ -116,6 +124,8 @@ def calculate_permanence_statistics(threshold=0.8, dt=None, file_path="firing_ra
         Time step between consecutive points.
     file_path : str
         Directory containing firing rate files (.npy format expected).
+    smooth_window : int
+        Window size for smoothing overlaps with a moving average.
 
     Returns
     -------
@@ -132,7 +142,7 @@ def calculate_permanence_statistics(threshold=0.8, dt=None, file_path="firing_ra
         if fname.endswith(".npy"):
             firing_rates = np.load(os.path.join(file_path, fname))
             overlaps = calculate_pattern_overlaps(firing_rates, eta, phi_params, g_params, use_numba=use_numba, use_g=use_g)
-            permanence = calculate_permanence_single_trial(overlaps, threshold=threshold, dt=dt)
+            permanence = calculate_permanence_single_trial(overlaps, threshold=threshold, dt=dt, smooth_window=smooth_window)
             permanence_all.extend(permanence)
 
     if len(permanence_all) == 0:
@@ -149,10 +159,14 @@ if __name__ == "__main__":
         mean_perm = np.mean(all_perm)
         std_perm = np.std(all_perm)
     else:
-        mean_perm, std_perm, all_perm = calculate_permanence_statistics(threshold=threshold, dt=dt, file_path=firing_rates_path)
+        mean_perm, std_perm, all_perm = calculate_permanence_statistics(threshold=threshold, dt=dt, file_path=firing_rates_path, smooth_window=10)
     print(f"Mean permanence time above threshold {threshold}: {mean_perm:.2f}")
     print(f"Standard deviation of permanence times: {std_perm:.2f}")
+    np.save(os.path.join(npy_path, "permanence_times.npy"), all_perm)
     # draw the histogram of all permanence times
+    # print the fraction of permanence times lower than 200
+    fraction_below_200 = np.sum(all_perm < 10) / len(all_perm)
+    print(f"Fraction of permanence times below 200: {fraction_below_200:.2f}") 
     plt.axvline(mean_perm, color='r', linestyle='--', label='Mean = {:.2f}'.format(mean_perm))
     plt.hist(all_perm, bins=50, density=False)
     plt.xlabel("Dwell time", fontsize=20)
@@ -163,10 +177,23 @@ if __name__ == "__main__":
     plt.legend(fontsize=18)
     plt.savefig(os.path.join(npy_path, "..", "plots", "dwell.png"))
     plt.show()
-    np.save(os.path.join(npy_path, "permanence_times.npy"), all_perm)
 
 
-
-
-
-    
+    # plot the smoothed overlaps for a sample trial
+    sample_firing_rates = np.load(os.path.join(firing_rates_path, os.listdir(firing_rates_path)[0]))
+    sample_overlaps = calculate_pattern_overlaps(sample_firing_rates, eta, phi_params, g_params, use_numba=use_numba, use_g=use_g)
+    n_timepoints, n_patterns = sample_overlaps.shape
+    time = np.arange(n_timepoints) * dt
+    # smoothing overlaps with a moving average of window size 5
+    window_size = 100
+    cumsum = np.cumsum(np.insert(sample_overlaps, 0, 0, axis=0), axis=0)
+    smoothed_overlaps = (cumsum[window_size:] - cumsum[:-window_size]) / window_size
+    time_smoothed = time[window_size - 1:]
+    for p in range(n_patterns):
+        plt.plot(time_smoothed, smoothed_overlaps[:, p], label=f"Pattern {p}")
+    plt.axhline(threshold, color='k', linestyle='--', label='Threshold')
+    plt.xlabel("Time", fontsize=20)
+    plt.ylabel("Overlap", fontsize=20)
+    plt.title("Smoothed Pattern Overlaps (Sample Trial)", fontsize=20)
+    plt.legend(fontsize=12)
+    plt.show()

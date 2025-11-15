@@ -59,7 +59,7 @@ from parameters import (
     tau_zeta,
     zeta_bar,
     sigma_zeta,
-    constant_zeta,
+    fixed_zeta,
 
     # Visualization parameters
     n_display,
@@ -96,9 +96,15 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
         'q_f': g_q,
         'x_f': g_x
     }
-
+    # Prepare phi function parameters
+    phi_params = {
+        'r_m': phi_r_m,
+        'beta': phi_beta,
+        'x_r': phi_x_r,
+    }
+    
     # Set up initial condition with proper noise calculation, no pattern index here (random)
-    initial_condition = initial_condition_creator(init_cond_type, N, g_params=g_params, p=p, vec=phi_eta, noise_level=noise_level)
+    initial_condition = initial_condition_creator(init_cond_type, N, g_params=g_params, phi_params=phi_params, p=p, eta=eta, noise_level=noise_level)
 
     # Run simulation with same φ parameters used in connectivity generation
     t, u, zeta = simulate_network(
@@ -114,7 +120,7 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
         beta=phi_beta,
         x_r=phi_x_r,
         model_type=model_type,
-        constant_zeta=constant_zeta if not use_ou else None,
+        constant_zeta=fixed_zeta if not use_ou else None,
         use_numba=use_numba,
         ou_non_neg=ou_non_neg
     )
@@ -124,12 +130,6 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
     # Calculate pattern overlaps
     overlaps = None
     if p > 0:
-        # Prepare phi function parameters
-        phi_params = {
-            'r_m': phi_r_m,
-            'beta': phi_beta,
-            'x_r': phi_x_r,
-        }
 
         overlaps = calculate_pattern_overlaps(u,
                                               eta,
@@ -428,7 +428,7 @@ def multiple_simulations():
     np.save(os.path.join(npy_dir, "phi_memory_patterns.npy"), phi_eta)
     np.save(os.path.join(npy_dir, "memory_patterns.npy"), eta)
 
-    for seed_index in range(38, 38+runs):  # Run multiple simulations
+    for seed_index in range(19, 19+runs):  # Run multiple simulations
         # transform the number of the seed into a string called addition
         addition = str(seed_index)
         single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params, seed=seed_index, verbose=verbose)

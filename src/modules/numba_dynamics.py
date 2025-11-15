@@ -4,8 +4,10 @@ Matches dynamics.py exactly: no interpolation of zeta.
 All arrays and computations float32.
 """
 
+from curses import use_default_colors
 import numpy as np
 from numba import njit, prange
+from sympy import use, zeta
 
 # -----------------------------
 # Activation functions
@@ -105,7 +107,7 @@ def ou_heun_step(z, dt_step, tau_zeta, zeta_bar, sigma_zeta, dW):
 def simulate_network_numba(W_S, W_A, initial_condition, n_steps, dt, tau,
                            r_m, beta, x_r, model_type, use_ou,
                            tau_zeta=1.0, zeta_bar=1.0, sigma_zeta=0.0,
-                           constant_zeta=1.0, seed=None, ou_non_neg=True):
+                           fixed_zeta=None, seed=None, ou_non_neg=True):
     if seed is not None:
         np.random.seed(seed)
 
@@ -114,27 +116,28 @@ def simulate_network_numba(W_S, W_A, initial_condition, n_steps, dt, tau,
     u = initial_condition.astype(np.float32).copy()
     u_hist[0, :] = u
 
-    zeta_array = np.empty(n_steps, dtype=np.float32)
-    if not use_ou:
-        zeta_array[:] = np.float32(constant_zeta)
-    else:
-        zeta_array[0] = np.float32(zeta_bar)
-
-    for i in range(1, n_steps):
-        if use_ou:
-            dW = np.float32(np.random.normal(0.0, 1.0) * np.sqrt(dt))
-            z_n = zeta_array[i-1]
-            z_next = ou_heun_step(z_n, dt, tau_zeta, zeta_bar, sigma_zeta, dW)
+    zeta_array = np.empty(n_steps, dtype=np.float32) # store zeta values
+    if use_ou == True:
+        zeta_array[0] = np.float32(zeta_bar) # initial zeta = mean
+        for i in range(1, n_steps):
+            dW = np.float32(np.random.normal(0.0, 1.0) * np.sqrt(dt)) # Wiener increment
+            z_n = zeta_array[i-1] # previous zeta
+            z_next = ou_heun_step(z_n, dt, tau_zeta, zeta_bar, sigma_zeta, dW) # next zeta
             z_next = np.maximum(z_next, 0.0) if ou_non_neg else z_next  # ensure zeta non-negative
-            zeta_array[i] = z_next
-            zeta_n = z_n
+            zeta_array[i] = z_next # store zeta
+            zeta_n = z_n # current zeta for dynamics (use the previous value)
+            u = heun_step(u, dt, W_S, W_A, tau, zeta_n, model_type, r_m, beta, x_r) # Heun step on u
+            u_hist[i, :] = u # store u
+    else:
+        # store fixed zeta values if fixed_zeta is an array of correct length else fill with constant
+        if fixed_zeta is not None and len(fixed_zeta) == n_steps:
+            zeta_array = fixed_zeta 
         else:
-            zeta_n = np.float32(constant_zeta)
-            z_next = zeta_n
-            zeta_array[i] = z_next
-
-        u = heun_step(u, dt, W_S, W_A, tau, zeta_n, model_type, r_m, beta, x_r)
-        u_hist[i, :] = u
+            zeta_array = np.full(n_steps, np.float32(fixed_zeta), dtype=np.float32)
+        for i in range(1, n_steps):
+            zeta_value = zeta_array[i]
+            u = heun_step(u, dt, W_S, W_A, tau, zeta_value, model_type, r_m, beta, x_r)
+            u_hist[i, :] = u
 
     return u_hist, zeta_array
 

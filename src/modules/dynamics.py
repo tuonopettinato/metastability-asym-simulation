@@ -21,7 +21,7 @@ def _ou_heun_step(z, dt_step, tau_zeta, zeta_bar, sigma_zeta, dW):
 # ---------------------------
 # Initial conditions
 # ---------------------------
-def initial_condition_creator(init_cond_type, N, g_params, p=0, xi=None, pattern_idx=None, noise_level=0.5, seed=None):
+def initial_condition_creator(init_cond_type, N, g_params, phi_params, p=0, eta=None, pattern_idx=None, noise_level=0.5, seed=None):
     if seed is not None:
         np.random.seed(seed)
     pattern_index = np.random.randint(0, p) if pattern_idx is None else pattern_idx
@@ -29,15 +29,18 @@ def initial_condition_creator(init_cond_type, N, g_params, p=0, xi=None, pattern
         initial_condition = np.random.normal(0.0, 0.1, N)
     elif init_cond_type == "Zero":
         initial_condition = np.zeros(N)
-    elif init_cond_type == "Memory Pattern":
-        initial_condition = xi[pattern_index].copy() if p > 0 and xi is not None else np.random.normal(0.0, 0.1, N)
+    elif init_cond_type == "Memory Pattern" or init_cond_type == "Negative Memory Pattern":
+        phi_eta = sigmoid_function(eta, **phi_params) if eta is not None else eta
+        initial_condition = phi_eta[pattern_index].copy() if p > 0 and eta is not None else np.random.normal(0.0, 0.1, N)
         initial_condition = step_function(initial_condition, **g_params)
-    elif init_cond_type == "Negative Memory Pattern":
-        initial_condition = -xi[pattern_index].copy() if p > 0 and xi is not None else np.random.normal(0.0, 0.1, N)
-        initial_condition = step_function(initial_condition, **g_params)
+        if init_cond_type == "Negative Memory Pattern":
+            initial_condition = -initial_condition
+        else: # Memory Pattern
+            initial_condition = initial_condition
     else:  # Near Memory Pattern
-        if p > 0 and xi is not None:
-            pattern = xi[pattern_index % p]
+        if p > 0 and eta is not None:
+            phi_eta = sigmoid_function(eta, **phi_params) if eta is not None else eta
+            pattern = phi_eta[pattern_index % p]
             noise = np.random.normal(0.0, noise_level * np.std(pattern), N)
             initial_condition = pattern + noise
         else:
@@ -86,7 +89,7 @@ def simulate_network(W_S,
                      beta=0.0,
                      x_r=0.0,
                      model_type="recanatesi",
-                     constant_zeta=1.0,
+                     fixed_zeta=0.0,
                      use_numba=False,
                      seed=None,
                      ou_non_neg=True):
@@ -96,9 +99,10 @@ def simulate_network(W_S,
             return simulate_network_numba(W_S, W_A, t_span, dt, tau,
                                          initial_condition, use_ou, ou_params,
                                          r_m, beta, x_r, model_type,
-                                         constant_zeta, seed, ou_non_neg=True)
+                                         fixed_zeta, seed, ou_non_neg=True)
         except Exception:
             # fallback Python
+            print("Numba simulation failed, falling back to Python implementation.")
             pass
 
     # Python implementation
@@ -129,7 +133,10 @@ def simulate_network(W_S,
     zeta_array = np.zeros(n_steps, dtype=np.float32)
 
     if not use_ou:
-        zeta_array[:] = np.float32(constant_zeta)
+        if fixed_zeta is not None and len(fixed_zeta) == n_steps:
+            zeta_array = np.float32(fixed_zeta)
+        else:
+            zeta_array = np.float32(np.full(n_steps, fixed_zeta if fixed_zeta is not None else 1.0))
     else:
         tau_zeta = np.float32(ou_params['tau_zeta'])
         zeta_bar = np.float32(ou_params['zeta_bar'])

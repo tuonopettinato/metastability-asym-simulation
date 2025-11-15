@@ -11,6 +11,7 @@ Edit this file to configure your simulation, then run main.py to execute.
 
 import os 
 from scipy.__config__ import show
+import numpy as np
 
 # Network size and pattern parameters
 N = 1500               # Number of neurons (increased for Numba testing)
@@ -20,8 +21,8 @@ c = 0.1                # Connection probability (0-1) for Erdős-Rényi model
 A_S = 4.0              # Amplitude parameter for symmetric component (4.0 for p = 5, q = 3)
 
 # f and g function (step functions) parameters for connectivity generation
-f_q = .7              # Step value for f step function (0.7)
-f_x = 2.8              # Step threshold for f step function (3.0)
+f_q = 0.7              # Step value for f step function (0.7)
+f_x = 2.8              # Step threshold for f step function (3.0 --- 2.8)
 
 # using same parameters for f and g step functions in order to have a really symmetric W_S
 g_q = f_q             # Step value for g step function (0.7)
@@ -61,8 +62,8 @@ use_numba = True        # Enable Numba JIT compilation for large networks (N > 1
 use_g = True  # Whether to apply g function to patterns, default is True in Recanatesi et al.
 
 # Initial condition settings
-init_cond_type = "Memory Pattern"  # Options: "Random", "Zero", "Memory Pattern", "Near Memory Pattern", "Negative Memory Pattern"
-pattern_idx = 1         # Which pattern to use (0-indexed) if using pattern-based init - neglected in multiple simulations
+init_cond_type = "Random"  # Options: "Random", "Zero", "Memory Pattern", "Near Memory Pattern", "Negative Memory Pattern"
+pattern_idx = 3         # Which pattern to use (0-indexed) if using pattern-based init - neglected in multiple simulations
 noise_level = 0.5       # Noise level if using "Near Memory Pattern" init
 
 # Simulation options
@@ -70,12 +71,15 @@ use_symmetric_only = False   # Whether to use only the symmetric component (W^S)
 model_type = "recanatesi"   # Dynamics model: "recanatesi" or "brunel"
 
 # Ornstein-Uhlenbeck process parameters for ζ(t)
-use_ou = True          # Whether to use Ornstein-Uhlenbeck process for ζ(t)
+use_ou = False          # Whether to use Ornstein-Uhlenbeck process for ζ(t)
 ou_non_neg = True     # Whether to enforce non-negativity on ζ(t)
 tau_zeta = 20.0          # OU time constant
 zeta_bar = 0.7          # OU mean value (0.65)
-sigma_zeta = 0.55        # OU noise intensity (0.65)
-constant_zeta = 0.    # Constant ζ value when OU is not used
+sigma_zeta = 0.4        # OU noise intensity (0.65)
+# fixed_zeta = 0.    # Constant ζ value when OU is not used, it can also be a float32 array of length equal to number of time steps
+t = np.arange(t_start, t_end, dt, dtype=np.float32)
+n_steps = len(t)
+fixed_zeta = (zeta_bar + sigma_zeta * np.sin(np.linspace(t_start, t_end, n_steps))).astype(np.float32)
 
 # =============================================================================
 # VISUALIZATION PARAMETERS
@@ -86,13 +90,13 @@ n_display = 10             # Maximum number of neurons to display in plots (redu
 show_sim_plots = False  # Whether to show individual plots for each variable
 plot_connectivity_matrices = False,
 plot_heatmap= False,
-verbose = False
+verbose = True
 ou_threshold = 2.  # Threshold for highlighting OU noise in plots
 single_dir_name = "simulation_results_new_half"
 multiple_dir_name = "multiple_simulations"
 
 # Number of runs
-runs = 1
+runs = 20
 # Import connectivity or not
 import_connectivity = True
 
