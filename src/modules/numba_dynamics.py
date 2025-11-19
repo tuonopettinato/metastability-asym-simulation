@@ -115,6 +115,7 @@ def simulate_network_numba(W_S, W_A, initial_condition, n_steps, dt, tau,
     u_hist = np.empty((n_steps, N), dtype=np.float32)
     u = initial_condition.astype(np.float32).copy()
     u_hist[0, :] = u
+    t = np.arange(0, n_steps*dt, dt, dtype=np.float32)
 
     zeta_array = np.empty(n_steps, dtype=np.float32) # store zeta values
     if use_ou == True:
@@ -139,7 +140,8 @@ def simulate_network_numba(W_S, W_A, initial_condition, n_steps, dt, tau,
             u = heun_step(u, dt, W_S, W_A, tau, zeta_value, model_type, r_m, beta, x_r)
             u_hist[i, :] = u
 
-    return u_hist, zeta_array
+    # return t, u_hist, zeta_array
+    return t, u_hist, zeta_array
 
 # -----------------------------
 # Pattern overlaps

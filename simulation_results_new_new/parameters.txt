@@ -14,20 +14,17 @@ phi_r_m: 30.0
 phi_x_r: 2.0
 pattern_mean: 0.0
 pattern_sigma: 1.0
-alpha: 1.0
 enforce_max_correlation: True
-max_correlation: 0.01
-apply_sigma_cutoff: False
 apply_phi_to_patterns: True
 apply_er_to_asymmetric: False
 tau: 20.0
 t_start: 0.0
-t_end: 10000.0
+t_end: 30000.0
 dt: 0.2
 use_numba: True
 use_g: True
-init_cond_type: Random
-pattern_idx: 3
+init_cond_type: Memory Pattern
+pattern_idx: 2
 noise_level: 0.5
 use_symmetric_only: False
 model_type: recanatesi
@@ -35,20 +32,20 @@ use_ou: True
 ou_non_neg: True
 tau_zeta: 20.0
 zeta_bar: 0.7
-sigma_zeta: 0.4
-t: [0.000000e+00 2.000000e-01 4.000000e-01 ... 9.999400e+03 9.999601e+03
- 9.999800e+03]
-n_steps: 50000
-fixed_zeta: [0.7       0.7       0.7       ... 2.2999544 2.2999797 2.299995 ]
+sigma_zeta: 0.55
+t: [0.00000e+00 2.00000e-01 4.00000e-01 ... 2.99994e+04 2.99996e+04
+ 2.99998e+04]
+n_steps: 150000
+fixed_zeta: [0.7       0.7       0.7       ... 2.8999374 2.8999722 2.899993 ]
 n_display: 10
 show_sim_plots: False
 plot_connectivity_matrices: (False,)
 plot_heatmap: (False,)
 verbose: True
 ou_threshold: 2.0
-single_dir_name: simulation_results_new_half
-multiple_dir_name: multiple_simulations
+single_dir_name: simulation_results_new_new
+multiple_dir_name: multiple_simulations_prova
 runs: 20
 import_connectivity: True
 seed: 3
-output_dir: /Users/valeriocaporioni/Documents/thesis/metastability-asym-simulation/src/../simulation_results_new_half
+output_dir: /Users/valeriocaporioni/Documents/thesis/metastability-asym-simulation/src/../simulation_results_new_new

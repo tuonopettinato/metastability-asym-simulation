@@ -36,9 +36,6 @@ from parameters import (
     pattern_mean,
     pattern_sigma,
     enforce_max_correlation,
-    max_correlation,
-    alpha,
-    apply_sigma_cutoff,
     apply_phi_to_patterns,
     apply_er_to_asymmetric,
 
@@ -120,7 +117,7 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
         beta=phi_beta,
         x_r=phi_x_r,
         model_type=model_type,
-        constant_zeta=fixed_zeta if not use_ou else None,
+        fixed_zeta=fixed_zeta if not use_ou else None,
         use_numba=use_numba,
         ou_non_neg=ou_non_neg
     )
@@ -242,15 +239,12 @@ def multiple_simulations():
             g_x=g_x,
             pattern_mean=pattern_mean,
             pattern_sigma=pattern_sigma,
-            apply_sigma_cutoff=apply_sigma_cutoff,
             phi_beta=phi_beta,
             phi_r_m=phi_r_m,
             phi_x_r=phi_x_r,
             apply_phi_to_patterns=apply_phi_to_patterns,
             apply_er_to_asymmetric=apply_er_to_asymmetric,
-            alpha=alpha,
-            enforce_max_correlation=enforce_max_correlation,
-            max_correlation=max_correlation)
+            enforce_max_correlation=enforce_max_correlation)
         logger.info("Matrices generated successfully!")
         return W_S, W_A, W, eta, phi_eta
 
@@ -299,8 +293,6 @@ def multiple_simulations():
             logger.info(f"\nMemory Pattern Correlation Analysis:")
             logger.info(f"Number of patterns: {eta.shape[0]}")
             logger.info(f"Correlation constraint enforced: {enforce_max_correlation}")
-            if enforce_max_correlation:
-                logger.info(f"Maximum correlation threshold: {max_correlation:.3f}")
             logger.info(f"Actual maximum correlation: {actual_max_correlation:.3f}")
         else:
             None
@@ -308,8 +300,7 @@ def multiple_simulations():
         if N < 2001: # Only plot matrices for smaller networks
             # Plot matrices
             _, _, _ = plot_pattern_correlation_matrix(eta,
-                                                    enforce_max_correlation,
-                                                    max_correlation,
+                                                    enforce_max_correlation=enforce_max_correlation,
                                                     ax=None, output_dir=output_dir)
 
             fig1 = plt.figure(figsize=(15, 5))
@@ -351,7 +342,7 @@ def multiple_simulations():
         else: None
     else:
         ou_params = None
-        logger.info(f"Using constant ζ = {constant_zeta}") if verbose else None
+        logger.info(f"Using fixed ζ") if verbose else None
 
     # Choose which connectivity matrix to use
     if use_symmetric_only:
@@ -389,9 +380,6 @@ def multiple_simulations():
         'pattern_mean': pattern_mean,
         'pattern_sigma': pattern_sigma,
         'enforce_max_correlation': enforce_max_correlation,
-        'max_correlation': max_correlation,
-        'alpha': alpha,
-        'apply_sigma_cutoff': apply_sigma_cutoff,
         'apply_phi_to_patterns': apply_phi_to_patterns,
         'apply_er_to_asymmetric': apply_er_to_asymmetric,
         'use_ou': use_ou,
@@ -399,7 +387,7 @@ def multiple_simulations():
         'tau_zeta': tau_zeta if use_ou else None,  # Only include if using OU
         'zeta_bar': zeta_bar if use_ou else None,  # Only include if using OU
         'sigma_zeta': sigma_zeta if use_ou else None,  # Only include if using OU
-        'constant_zeta': constant_zeta if not use_ou else None,  # Only include if not using OU
+        'fixed_zeta': fixed_zeta if not use_ou else None,  # Only include if not using OU
         't_start': t_start,
         't_end': t_end,
         'dt': dt,

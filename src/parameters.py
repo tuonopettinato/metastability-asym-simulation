@@ -40,10 +40,7 @@ phi_x_r = 2.0                  # Threshold parameter for sigmoid function (using
 # Pattern distribution parameters
 pattern_mean = 0.0      # Mean of the Gaussian distribution for memory patterns
 pattern_sigma = 1.0     # Standard deviation of the Gaussian distribution for memory patterns
-alpha = 1.0             # Memory pattern sparsity (0-1): fraction of active neurons per pattern
 enforce_max_correlation = False  # Switch to enable correlation constraint enforcement
-max_correlation = 0.5  # Maximum allowed correlation between patterns (when enforcement enabled)
-apply_sigma_cutoff = False       # Apply 1σ cutoff to patterns
 apply_phi_to_patterns = True    # Apply φ function to patterns
 apply_er_to_asymmetric = False  # Apply Erdős-Rényi to asymmetric component
 
@@ -54,7 +51,7 @@ apply_er_to_asymmetric = False  # Apply Erdős-Rényi to asymmetric component
 # Time and integration parameters
 tau = 20.0              # Time constant for neural dynamics
 t_start = 0.0           # Simulation start time
-t_end = 10000.0           # Simulation end time
+t_end = 30000.0           # Simulation end time
 dt = 0.2                # Time step for simulation output (increased for efficiency)
 
 # Performance optimization
@@ -62,8 +59,8 @@ use_numba = True        # Enable Numba JIT compilation for large networks (N > 1
 use_g = True  # Whether to apply g function to patterns, default is True in Recanatesi et al.
 
 # Initial condition settings
-init_cond_type = "Random"  # Options: "Random", "Zero", "Memory Pattern", "Near Memory Pattern", "Negative Memory Pattern"
-pattern_idx = 3         # Which pattern to use (0-indexed) if using pattern-based init - neglected in multiple simulations
+init_cond_type = "Memory Pattern"  # Options: "Random", "Zero", "Memory Pattern", "Near Memory Pattern", "Negative Memory Pattern"
+pattern_idx = 2         # Which pattern to use (0-indexed) if using pattern-based init - neglected in multiple simulations
 noise_level = 0.5       # Noise level if using "Near Memory Pattern" init
 
 # Simulation options
@@ -71,15 +68,24 @@ use_symmetric_only = False   # Whether to use only the symmetric component (W^S)
 model_type = "recanatesi"   # Dynamics model: "recanatesi" or "brunel"
 
 # Ornstein-Uhlenbeck process parameters for ζ(t)
-use_ou = False          # Whether to use Ornstein-Uhlenbeck process for ζ(t)
+use_ou = True          # Whether to use Ornstein-Uhlenbeck process for ζ(t)
 ou_non_neg = True     # Whether to enforce non-negativity on ζ(t)
 tau_zeta = 20.0          # OU time constant
 zeta_bar = 0.7          # OU mean value (0.65)
-sigma_zeta = 0.4        # OU noise intensity (0.65)
+sigma_zeta = 0.4        # OU noise intensity (0.65 -- 0.4 -- 0.3)
 # fixed_zeta = 0.    # Constant ζ value when OU is not used, it can also be a float32 array of length equal to number of time steps
 t = np.arange(t_start, t_end, dt, dtype=np.float32)
 n_steps = len(t)
-fixed_zeta = (zeta_bar + sigma_zeta * np.sin(np.linspace(t_start, t_end, n_steps))).astype(np.float32)
+fixed_zeta = (zeta_bar + 4*sigma_zeta *
+              np.clip(np.sin(2*np.pi*((np.arange(n_steps) % 2500)/2500) + np.pi/2) *
+                      (np.arange(n_steps) // 2500 > 0),
+                      0, None)
+             ).astype(np.float32)
+
+
+
+
+
 
 # =============================================================================
 # VISUALIZATION PARAMETERS
@@ -92,8 +98,8 @@ plot_connectivity_matrices = False,
 plot_heatmap= False,
 verbose = True
 ou_threshold = 2.  # Threshold for highlighting OU noise in plots
-single_dir_name = "simulation_results_new_half"
-multiple_dir_name = "multiple_simulations"
+single_dir_name = "simulation_results_new_new"
+multiple_dir_name = "multiple_simulations_prova"
 
 # Number of runs
 runs = 20

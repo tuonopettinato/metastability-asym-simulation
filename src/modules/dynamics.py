@@ -154,8 +154,7 @@ def simulate_network(W_S,
             zeta_n = z_n
         else:
             zeta_n = zeta_array[i-1]
-            z_next = zeta_n
-            zeta_array[i] = z_next
+            z_next = zeta_array[i]
 
         # Heun per u (deterministic Heun using zeta at n for predictor, zeta_next for corrector)
         k1 = network_dynamics(u, W_S, W_A, activation_fn, tau, zeta_value=zeta_n, model_type=model_type)
@@ -197,6 +196,7 @@ def calculate_pattern_overlaps(u, patterns, phi_params, g_params, use_g=True, us
 
     for ti in range(n_timepoints):
         r = sigmoid_function(u[ti, :], **phi_params).astype(np.float32)
+        r = step_function(r, **g_params).astype(np.float32) # filtering r through g (step function)
         var_r = np.var(r)
         if var_r <= 1e-12:
             continue

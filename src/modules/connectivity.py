@@ -8,80 +8,6 @@ import seaborn as sns
 from matplotlib.colors import TwoSlopeNorm
 from modules.activation import threshold_function, relu_function, sigmoid_function, step_function
 
-
-def _enforce_correlation_constraint(eta_patterns, max_correlation, pattern_mean, alpha, pattern_sigma, max_iterations=100):
-    """
-    Iteratively refine patterns to ensure pairwise correlations stay below max_correlation.
-    
-    Parameters:
-    -----------
-    eta_patterns : ndarray
-        Memory patterns of shape (p, N)
-    max_correlation : float
-        Maximum allowed correlation between patterns
-    alpha : float
-        Sparsity parameter for pattern refinement
-    pattern_mean : float
-        Mean for generating new random values
-    pattern_sigma : float
-        Standard deviation for generating new random values
-    max_iterations : int
-        Maximum number of refinement iterations
-        
-    Returns:
-    --------
-    eta_refined : ndarray
-        Patterns with correlations below max_correlation
-    """
-    p, N = eta_patterns.shape
-    eta_refined = eta_patterns.copy()
-    
-    for iteration in range(max_iterations):
-        # Calculate all pairwise correlations
-        max_corr_found = 0.0
-        violating_pairs = []
-        
-        for i in range(p):
-            for j in range(i + 1, p):
-                # Calculate correlation, handling zero variance patterns
-                pattern_i = eta_refined[i, :]
-                pattern_j = eta_refined[j, :]
-                
-                if np.std(pattern_i) > 1e-10 and np.std(pattern_j) > 1e-10:
-                    corr = np.corrcoef(pattern_i, pattern_j)[0, 1]
-                    if not np.isnan(corr):
-                        abs_corr = abs(corr)
-                        max_corr_found = max(max_corr_found, abs_corr)
-                        if abs_corr > max_correlation:
-                            violating_pairs.append((i, j, abs_corr))
-        
-        # If all correlations are within bounds, we're done
-        if max_corr_found <= max_correlation:
-            break
-            
-        # Refine the most violating patterns
-        if violating_pairs:
-            # Sort by violation severity and fix the worst one
-            violating_pairs.sort(key=lambda x: x[2], reverse=True)
-            i, j, _ = violating_pairs[0]
-            
-            # Add small random perturbations to reduce correlation
-            noise_strength = 0.1 * pattern_sigma
-            
-            # Perturb pattern j (keep pattern i as reference)
-            random_noise = np.random.normal(0, noise_strength, N)
-            eta_refined[j, :] += random_noise
-
-            if alpha < 1.0:
-                # Enforce sparsity after perturbation
-                sorted_indices = np.argsort(np.abs(eta_refined[j, :]))[::-1]
-                n_active = int(alpha * N)
-                inactive_indices = sorted_indices[n_active:]
-                eta_refined[j, inactive_indices] = 0
-    
-    return eta_refined
-
-
 def generate_connectivity_matrix(N,
                                  p,
                                  q,
@@ -93,15 +19,12 @@ def generate_connectivity_matrix(N,
                                  g_x=0.0,
                                  pattern_mean=0.0,
                                  pattern_sigma=1.0,
-                                 apply_sigma_cutoff=True,
                                  phi_beta=1.0,
                                  phi_r_m=1.0,
                                  phi_x_r=0.0,
                                  apply_phi_to_patterns=True,
                                  apply_er_to_asymmetric=False,
-                                 alpha=1.0,
-                                 enforce_max_correlation=False,
-                                 max_correlation=0.5):
+                                 enforce_max_correlation=False):
     """
     Generate connectivity matrices (symmetric, asymmetric, and total)
     
@@ -135,26 +58,15 @@ def generate_connectivity_matrix(N,
         Mean of the Gaussian distribution for memory patterns
     pattern_sigma : float
         Standard deviation of the Gaussian distribution for memory patterns
-    apply_sigma_cutoff : bool
-        Whether to apply 1σ cutoff to patterns (values below μ + σ set to zero), default: True
     apply_phi_to_patterns : bool
         Whether to apply the activation function (φ) to the patterns, default: True
     apply_er_to_asymmetric : bool
         Whether to apply Erdős-Rényi connectivity to asymmetric component. 
         If True: Apply c_ij to both symmetric and asymmetric components.
         If False: Apply c_ij only to symmetric component, default: False
-    alpha : float
-        Memory pattern sparsity parameter (0-1). Controls the fraction of neurons 
-        that are active (non-zero) in each memory pattern. alpha=1.0 means all 
-        neurons can be active (dense patterns), alpha=0.1 means only 10% of neurons 
-        are active per pattern (sparse patterns). Reduces correlation between memories.
     enforce_max_correlation : bool
-        Switch to enable/disable correlation constraint enforcement. When True, 
-        patterns are iteratively refined to ensure correlations stay below max_correlation.
-    max_correlation : float
-        Maximum allowed correlation between any pair of memory patterns (0-1). 
-        Only used when enforce_max_correlation=True. Lower values create more 
-        orthogonal memories but may require more iterations.
+        Whether to enforce correlation constraint by selecting patterns with low mutual correlation
+        from a larger pool, default: False
     
     Returns:
     --------
@@ -169,30 +81,67 @@ def generate_connectivity_matrix(N,
     eta : ndarray
         Memory patterns used to generate the connectivity matrices
     """
+    # Set up f and g functions, which are both step functions
+    f = lambda x: step_function(x, f_q, f_x)
+    g = lambda x: step_function(x, g_q, g_x)
+    # Set up φ function, which is a sigmoid
+    phi = lambda x: sigmoid_function(x, phi_r_m, phi_beta, phi_x_r)
+
     # Generate random memory patterns from Gaussian distribution
-    eta_raw = np.random.normal(pattern_mean, pattern_sigma, size=(p, N))
-    # eta_raw[eta_raw < 0] = 0 # firing rates are positive (but they are not firing rates)
-
-    # Apply memory pattern sparsity (alpha parameter)
-    if alpha < 1.0:
-        # For each pattern, keep only top alpha fraction of neurons active
-        for mu in range(p):
-            # Get indices sorted by absolute value (descending)
-            sorted_indices = np.argsort(np.abs(eta_raw[mu, :]))[::-1]
-            # Calculate number of neurons to keep active
-            n_active = int(alpha * N)
-            # Set inactive neurons to zero
-            inactive_indices = sorted_indices[n_active:]
-            eta_raw[mu, inactive_indices] = 0
-
-    # Conditionally apply 1-sigma cutoff (applied after sparsity)
-    if apply_sigma_cutoff:
-        # Cut all values below 1 sigma above the mean
-        eta_raw[eta_raw < pattern_mean + pattern_sigma] = 0
-
-    # Enforce maximum correlation constraint if enabled
+    
+    # =================== Memory patterns ======================
     if enforce_max_correlation and p > 1:
-        eta_raw = _enforce_correlation_constraint(eta_raw, max_correlation, alpha, pattern_mean, pattern_sigma)
+        N_internal = N
+        pool_size = 1000
+
+        # Genera pool di pattern raw
+        pool = np.random.normal(pattern_mean, pattern_sigma, size=(pool_size, N_internal))
+        if apply_phi_to_patterns:
+            phi_pool = np.zeros_like(pool)
+            for mu in range(pool_size):
+                phi_pool[mu, :] = phi(pool[mu, :])
+        else:
+            phi_pool = pool.copy()
+
+        # Calcola g(phi(pool)) per selezione
+        g_phi_pool = np.zeros_like(pool)
+        for mu in range(pool_size):
+            g_phi_pool[mu, :] = g(phi_pool[mu, :])
+
+        # Seleziona p pattern meno correlati in g_phi_pool
+        selected_indices = []
+        remaining_indices = list(range(pool_size))
+        while len(selected_indices) < p and remaining_indices:
+            if not selected_indices:
+                idx = np.random.choice(remaining_indices)
+                selected_indices.append(idx)
+                remaining_indices.remove(idx)
+            else:
+                correlations = []
+                for idx in remaining_indices:
+                    candidate = g_phi_pool[idx, :]
+                    corr_avg = np.mean([abs(np.corrcoef(candidate, g_phi_pool[i, :])[0, 1]) for i in selected_indices])
+                    correlations.append(corr_avg)
+                idx_min = remaining_indices[np.argmin(correlations)]
+                selected_indices.append(idx_min)
+                remaining_indices.remove(idx_min)
+
+        eta_raw = pool[selected_indices, :]
+        if apply_phi_to_patterns:
+            eta = np.zeros_like(eta_raw)
+            for mu in range(p):
+                eta[mu, :] = phi(eta_raw[mu, :])
+        else:
+            eta = eta_raw.copy()
+    else:
+        # Caso standard: generazione diretta
+        eta_raw = np.random.normal(pattern_mean, pattern_sigma, size=(p, N))
+        if apply_phi_to_patterns:
+            eta = np.zeros_like(eta_raw)
+            for mu in range(p):
+                eta[mu, :] = phi(eta_raw[mu, :])
+        else:
+            eta = eta_raw.copy()
 
     ###########################################################################
     #### -- Erdös-Rényi connection matrix c_ij -- #############################
@@ -207,19 +156,6 @@ def generate_connectivity_matrix(N,
 
     # Calculate N_S (average number of connections per neuron)
     N_S = N * c
-
-    # Set up f and g functions, which are both step functions
-    f = lambda x: step_function(x, f_q, f_x)
-    g = lambda x: step_function(x, g_q, g_x)
-    # Set up φ function, which is a sigmoid
-    phi = lambda x: sigmoid_function(x, phi_r_m, phi_beta, phi_x_r)
-    
-    if apply_phi_to_patterns:
-        eta = np.zeros_like(eta_raw)
-        for mu in range(p):
-            eta[mu, :] = phi(eta_raw[mu, :])
-    else:
-        eta = eta_raw
 
     # Initialize symmetric component
     W_S = np.zeros((N, N))
@@ -339,7 +275,7 @@ def calculate_pattern_correlation_matrix(eta_patterns):
     
     return correlation_matrix, max_correlation
 
-def plot_pattern_correlation_matrix(eta_patterns, enforce_max_correlation=False, max_correlation_threshold=0.5, ax=None, output_dir='../../simulation_results'):
+def plot_pattern_correlation_matrix(eta_patterns, enforce_max_correlation=False, ax=None, output_dir='../../simulation_results'):
     """
     Plot the correlation matrix of memory patterns with constraint information
     
@@ -349,8 +285,6 @@ def plot_pattern_correlation_matrix(eta_patterns, enforce_max_correlation=False,
         Memory patterns of shape (p, N)
     enforce_max_correlation : bool
         Whether correlation constraint was enforced
-    max_correlation_threshold : float
-        Maximum correlation threshold used
     ax : matplotlib.axes.Axes or None
         If provided, plot on this axis, otherwise create a new figure and axis
     output_dir : str
@@ -377,7 +311,7 @@ def plot_pattern_correlation_matrix(eta_patterns, enforce_max_correlation=False,
     # Plot correlation matrix with annotations
     sns.heatmap(correlation_matrix, 
                 annot=True, 
-                fmt='.2f', 
+                fmt='.4f', 
                 cmap='RdBu_r', 
                 vmin=-max_correlation, 
                 vmax=max_correlation, 
@@ -389,7 +323,7 @@ def plot_pattern_correlation_matrix(eta_patterns, enforce_max_correlation=False,
     # Set title with constraint information
     constraint_info = ""
     if enforce_max_correlation:
-        constraint_info = f"\nConstraint: max correlation ≤ {max_correlation_threshold:.2f}"
+        constraint_info = f"\nConstraint: pooling correlation enforced"
     else:
         constraint_info = "\nNo correlation constraint applied"
     

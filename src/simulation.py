@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from loguru import logger
 from modules.connectivity import generate_connectivity_matrix, plot_matrix
 from modules.dynamics import simulate_network, calculate_pattern_overlaps, initial_condition_creator
-from modules.activation import sigmoid_function, relu_function
+from modules.activation import sigmoid_function, relu_function, step_function
 from modules.energy import compute_energy
 from modules.connectivity import calculate_pattern_correlation_matrix, plot_pattern_correlation_matrix
 
@@ -37,9 +37,6 @@ def simulation():
     pattern_mean,
     pattern_sigma,
     enforce_max_correlation,
-    max_correlation,
-    alpha,
-    apply_sigma_cutoff,
     apply_phi_to_patterns,
     apply_er_to_asymmetric,
 
@@ -77,6 +74,19 @@ def simulation():
     """
     Simulation of the network dynamics. 
     """
+
+    # Prepare g function parameters
+    g_params = {
+        'q_f': g_q,
+        'x_f': g_x
+    }
+    # Prepare phi function parameters
+    phi_params = {
+        'r_m': phi_r_m,
+        'beta': phi_beta,
+        'x_r': phi_x_r
+    }
+
     np.random.seed(seed)  # for reproducibility
     output_dir = os.path.join(os.path.dirname(__file__), "..", single_dir_name)
     os.makedirs(output_dir, exist_ok=True) 
@@ -97,15 +107,12 @@ def simulation():
         g_x=g_x,
         pattern_mean=pattern_mean,
         pattern_sigma=pattern_sigma,
-        apply_sigma_cutoff=apply_sigma_cutoff,
         phi_beta=phi_beta,
         phi_r_m=phi_r_m,
         phi_x_r=phi_x_r,
         apply_phi_to_patterns=apply_phi_to_patterns,
         apply_er_to_asymmetric=apply_er_to_asymmetric,
-        alpha=alpha,
-        enforce_max_correlation=enforce_max_correlation,
-        max_correlation=max_correlation)
+        enforce_max_correlation=enforce_max_correlation)
     logger.info("Matrices generated successfully!")
 
     # Convert to float32 =========================================================================
@@ -114,6 +121,7 @@ def simulation():
     W = W.astype(np.float32)
     eta = eta.astype(np.float32)
     phi_eta = phi_eta.astype(np.float32)
+    g_phi_eta = step_function(phi_eta, **g_params).astype(np.float32)
     # ============================================================================================
 
     # Display matrix statistics
@@ -145,14 +153,12 @@ def simulation():
     # Calculate and show pattern correlation analysis
     
     correlation_matrix, actual_max_correlation = calculate_pattern_correlation_matrix(
-        eta)
+        g_phi_eta)
 
     if verbose:
         logger.info(f"\nMemory Pattern Correlation Analysis:")
         logger.info(f"Number of patterns: {eta.shape[0]}")
         logger.info(f"Correlation constraint enforced: {enforce_max_correlation}")
-        if enforce_max_correlation:
-            logger.info(f"Maximum correlation threshold: {max_correlation:.3f}")
         logger.info(f"Actual maximum correlation: {actual_max_correlation:.3f}")
         logger.info(f"Correlation matrix:")
         for i in range(correlation_matrix.shape[0]):
@@ -165,9 +171,8 @@ def simulation():
     if N < 2001 and plot_connectivity_matrices: # Only plot matrices for smaller networks
         logger.info("\nPlotting connectivity matrices...")
         # Plot matrices
-        _, _, _ = plot_pattern_correlation_matrix(eta,
-                                                enforce_max_correlation,
-                                                max_correlation,
+        _, _, _ = plot_pattern_correlation_matrix(g_phi_eta,
+                                                enforce_max_correlation=enforce_max_correlation,
                                                 ax=None, output_dir=output_dir)
 
         fig1 = plt.figure(figsize=(15, 5))
@@ -187,18 +192,6 @@ def simulation():
             "\nSkipping matrix plots for large network (N > 2000) or to save time and resources."
         )
 
-    # Prepare g function parameters
-    g_params = {
-        'q_f': g_q,
-        'x_f': g_x
-    }
-    # Prepare phi function parameters
-    phi_params = {
-        'r_m': phi_r_m,
-        'beta': phi_beta,
-        'x_r': phi_x_r
-    }
-
     # Set up initial condition with proper noise calculation 
     initial_condition = initial_condition_creator(
         init_cond_type=init_cond_type,
@@ -209,7 +202,7 @@ def simulation():
         eta=eta,
         pattern_idx=pattern_idx,
         noise_level=noise_level,
-        seed=seed+2 # + 19
+        seed=seed+19 # + 19
     )
 
     # Simulation time span
@@ -340,9 +333,6 @@ def simulation():
         'pattern_mean': pattern_mean,
         'pattern_sigma': pattern_sigma,
         'enforce_max_correlation': enforce_max_correlation,
-        'max_correlation': max_correlation,
-        'alpha': alpha,
-        'apply_sigma_cutoff': apply_sigma_cutoff,
         'apply_phi_to_patterns': apply_phi_to_patterns,
         'apply_er_to_asymmetric': apply_er_to_asymmetric,
         'use_ou': use_ou,
@@ -431,21 +421,6 @@ def simulation():
                 f'  $x_r$={phi_x_r}',
                 rotation=90,
                 verticalalignment='center')
-
-    # Add 1-sigma cutoff line if enabled
-    if apply_sigma_cutoff:
-        cutoff_value = pattern_mean + pattern_sigma
-        ax.axvline(x=cutoff_value,
-                   color='green',
-                   linestyle=':',
-                   alpha=0.8,
-                   linewidth=2)
-        ax.text(cutoff_value,
-                ax.get_ylim()[1] * 0.8,
-                f'  1σ cutoff\n  ({cutoff_value:.1f})',
-                rotation=90,
-                verticalalignment='top',
-                color='green')
 
     ax.set_xlabel('Input Value')
     ax.set_ylabel('φ(x)', color='red')
