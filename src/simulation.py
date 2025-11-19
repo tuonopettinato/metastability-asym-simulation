@@ -532,6 +532,7 @@ def simulation():
     figs[titles[3]] = (fig, ax)
     path = os.path.join(output_dir, f"{titles[3]}.png")
     fig.savefig(path, dpi=300)
+    # plt.show()
     plt.close(fig)
     logger.info(f"Saved {titles[3]} → {path}")
 

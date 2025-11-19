@@ -22,7 +22,7 @@ from parameters import (
 npy_path = os.path.join(os.path.dirname(__file__), "..", f'{multiple_dir_name}{"_"}{N}', 'npy')
 patterns_path = os.path.join(npy_path, 'memory_patterns.npy')
 firing_rates_path = os.path.join(npy_path, 'firing_rates')
-threshold = 0.6
+threshold = 0.8
 
 import numpy as np
 
@@ -56,44 +56,37 @@ def calculate_permanence_single_trial(overlaps, threshold=0.8, dt=None, smooth_w
     n_timepoints, n_patterns = overlaps.shape
     step_value = dt if dt is not None else 1.0
 
+    # smoothing
     if smooth_window > 1:
-        # smoothing overlaps with a moving average of window size
-        window_size = smooth_window
         cumsum = np.cumsum(np.insert(overlaps, 0, 0, axis=0), axis=0)
-        overlaps = (cumsum[window_size:] - cumsum[:-window_size]) / window_size
-    else:
-        None
-
-    # Identify the pattern with the highest overlap at each time step
-    max_indices = np.argmax(overlaps, axis=1)   # pattern index with max overlap
-    max_values = np.max(overlaps, axis=1)       # value of that max overlap
-
-    # Active pattern: index if above threshold, else -1 (no active pattern)
-    active_pattern = np.where(max_values > threshold, max_indices, -1)
+        overlaps = (cumsum[smooth_window:] - cumsum[:-smooth_window]) / smooth_window
 
     permanence_times = []
     current_pattern = None
     current_duration = 0.0
 
-    # Traverse the temporal sequence
-    for winner in active_pattern:
-        if winner == current_pattern:
-            # Same pattern continues being active
-            if winner != -1:
-                current_duration += step_value
-        else:
-            # Pattern changed or no pattern is currently active
-            if current_pattern is not None and current_pattern != -1 and current_duration > 0:
-                permanence_times.append(current_duration)
-            # Start new permanence if a new pattern becomes active
-            if winner != -1:
-                current_pattern = winner
-                current_duration = step_value
-            else:
-                current_pattern = None
-                current_duration = 0.0
+    for t in range(overlaps.shape[0]):
+        max_idx = np.argmax(overlaps[t])
 
-    # Do NOT add last episode if still ongoing at the end
+        if current_pattern is None:
+            # start new dwell
+            current_pattern = max_idx
+            current_duration = step_value
+        else:
+            if max_idx == current_pattern:
+                # continue dwell
+                current_duration += step_value
+            else:
+                # close dwell and start new one if above threshold
+                permanence_times.append(current_duration)
+                if overlaps[t, max_idx] > threshold:
+                    current_pattern = max_idx
+                    current_duration = step_value
+                else:
+                    current_pattern = None
+                    current_duration = 0.0
+
+    # do not add last dwell if still ongoing
     return np.array(permanence_times)
 
 # Prepare phi function parameters
@@ -159,13 +152,13 @@ if __name__ == "__main__":
         mean_perm = np.mean(all_perm)
         std_perm = np.std(all_perm)
     else:
-        mean_perm, std_perm, all_perm = calculate_permanence_statistics(threshold=threshold, dt=dt, file_path=firing_rates_path, smooth_window=10)
+        mean_perm, std_perm, all_perm = calculate_permanence_statistics(threshold=threshold, dt=dt, file_path=firing_rates_path, smooth_window=100)
     print(f"Mean permanence time above threshold {threshold}: {mean_perm:.2f}")
     print(f"Standard deviation of permanence times: {std_perm:.2f}")
     np.save(os.path.join(npy_path, "permanence_times.npy"), all_perm)
     # draw the histogram of all permanence times
     # print the fraction of permanence times lower than 200
-    fraction_below_200 = np.sum(all_perm < 10) / len(all_perm)
+    fraction_below_200 = np.sum(all_perm < 100) / len(all_perm)
     print(f"Fraction of permanence times below 200: {fraction_below_200:.2f}") 
     plt.axvline(mean_perm, color='r', linestyle='--', label='Mean = {:.2f}'.format(mean_perm))
     plt.hist(all_perm, bins=50, density=False)
@@ -184,7 +177,7 @@ if __name__ == "__main__":
     sample_overlaps = calculate_pattern_overlaps(sample_firing_rates, eta, phi_params, g_params, use_numba=use_numba, use_g=use_g)
     n_timepoints, n_patterns = sample_overlaps.shape
     time = np.arange(n_timepoints) * dt
-    # smoothing overlaps with a moving average of window size 5
+    # smoothing overlaps with a moving average of window size 100
     window_size = 100
     cumsum = np.cumsum(np.insert(sample_overlaps, 0, 0, axis=0), axis=0)
     smoothed_overlaps = (cumsum[window_size:] - cumsum[:-window_size]) / window_size

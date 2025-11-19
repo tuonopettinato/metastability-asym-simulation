@@ -99,7 +99,7 @@ plot_heatmap= False,
 verbose = True
 ou_threshold = 2.  # Threshold for highlighting OU noise in plots
 single_dir_name = "simulation_results_new_new"
-multiple_dir_name = "multiple_simulations_prova"
+multiple_dir_name = "multiple_simulations"
 
 # Number of runs
 runs = 20

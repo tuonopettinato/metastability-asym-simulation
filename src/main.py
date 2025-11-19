@@ -167,7 +167,7 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
             plt.plot(t, overlaps[:, i], label=f'Pattern {i+1}', linewidth=2)
         plt.xlabel('Time')
         plt.ylabel('Pattern Overlap')
-        plt.title(f'Memory Pattern Overlaps (A={A_S}, seed = {seed})')
+        plt.title(f'Overlaps ($\\bar{{\\zeta}} = {zeta_bar} $, $\\tau_\\zeta = {tau_zeta}$, A={A_S}, seed = {seed})')
         plt.grid(True)
         plt.legend()
     else:
