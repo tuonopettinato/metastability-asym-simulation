@@ -202,7 +202,7 @@ def simulation():
         eta=eta,
         pattern_idx=pattern_idx,
         noise_level=noise_level,
-        seed=seed+19 # + 19
+        seed=seed + 134 # + 19
     )
 
     # Simulation time span
@@ -515,7 +515,7 @@ def simulation():
     fig, ax = plt.subplots(figsize=(10, 6))
     # plot the times when the ou noise is above the threshold
     if zeta_array is not None:
-        ou_threshold = np.percentile(zeta_array, 90) # 90 percentile of zeta_array
+        ou_threshold = np.percentile(zeta_array, 98) # 98 percentile of zeta_array
         above_threshold = zeta_array > ou_threshold
         ax.fill_between(t, -0.1, 1.1, where=above_threshold, color='lightgray', alpha=0.7, ls = 'dashed', transform=ax.get_xaxis_transform())
     if overlaps is not None and overlaps.shape[1] > 0:

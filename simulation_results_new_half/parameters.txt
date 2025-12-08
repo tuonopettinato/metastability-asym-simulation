@@ -14,32 +14,29 @@ phi_r_m: 30.0
 phi_x_r: 2.0
 pattern_mean: 0.0
 pattern_sigma: 1.0
-alpha: 1.0
-enforce_max_correlation: True
-max_correlation: 0.01
-apply_sigma_cutoff: False
+enforce_max_correlation: False
 apply_phi_to_patterns: True
 apply_er_to_asymmetric: False
 tau: 20.0
 t_start: 0.0
-t_end: 10000.0
+t_end: 40000.0
 dt: 0.2
 use_numba: True
 use_g: True
-init_cond_type: Random
-pattern_idx: 3
+init_cond_type: Memory Pattern
+pattern_idx: 2
 noise_level: 0.5
 use_symmetric_only: False
 model_type: recanatesi
 use_ou: True
 ou_non_neg: True
 tau_zeta: 20.0
-zeta_bar: 0.7
-sigma_zeta: 0.4
-t: [0.000000e+00 2.000000e-01 4.000000e-01 ... 9.999400e+03 9.999601e+03
- 9.999800e+03]
-n_steps: 50000
-fixed_zeta: [0.7       0.7       0.7       ... 2.2999544 2.2999797 2.299995 ]
+zeta_bar: 0.6
+sigma_zeta: 0.45
+t: [0.0000000e+00 2.0000000e-01 4.0000001e-01 ... 3.9999402e+04 3.9999602e+04
+ 3.9999801e+04]
+n_steps: 200000
+fixed_zeta: [0.6       0.6       0.6       ... 2.3999488 2.3999772 2.3999944]
 n_display: 10
 show_sim_plots: False
 plot_connectivity_matrices: (False,)
@@ -48,7 +45,7 @@ verbose: True
 ou_threshold: 2.0
 single_dir_name: simulation_results_new_half
 multiple_dir_name: multiple_simulations
-runs: 20
-import_connectivity: True
-seed: 3
+runs: 10
+import_connectivity: False
+seed: 333
 output_dir: /Users/valeriocaporioni/Documents/thesis/metastability-asym-simulation/src/../simulation_results_new_half

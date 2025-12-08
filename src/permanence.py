@@ -22,7 +22,7 @@ from parameters import (
 npy_path = os.path.join(os.path.dirname(__file__), "..", f'{multiple_dir_name}{"_"}{N}', 'npy')
 patterns_path = os.path.join(npy_path, 'memory_patterns.npy')
 firing_rates_path = os.path.join(npy_path, 'firing_rates')
-threshold = 0.8
+threshold = 0.9
 
 import numpy as np
 

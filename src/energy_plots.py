@@ -29,9 +29,6 @@ from parameters import (
     pattern_mean,
     pattern_sigma,
     enforce_max_correlation,
-    max_correlation,
-    alpha,
-    apply_sigma_cutoff,
     apply_phi_to_patterns,
     apply_er_to_asymmetric,
 
@@ -51,7 +48,6 @@ from parameters import (
     tau_zeta,
     zeta_bar,
     sigma_zeta,
-    constant_zeta,
 
     # Visualization parameters
     n_display,

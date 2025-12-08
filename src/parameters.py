@@ -51,7 +51,7 @@ apply_er_to_asymmetric = False  # Apply Erdős-Rényi to asymmetric component
 # Time and integration parameters
 tau = 20.0              # Time constant for neural dynamics
 t_start = 0.0           # Simulation start time
-t_end = 30000.0           # Simulation end time
+t_end = 20000.0           # Simulation end time
 dt = 0.2                # Time step for simulation output (increased for efficiency)
 
 # Performance optimization
@@ -71,8 +71,8 @@ model_type = "recanatesi"   # Dynamics model: "recanatesi" or "brunel"
 use_ou = True          # Whether to use Ornstein-Uhlenbeck process for ζ(t)
 ou_non_neg = True     # Whether to enforce non-negativity on ζ(t)
 tau_zeta = 20.0          # OU time constant
-zeta_bar = 0.7          # OU mean value (0.65)
-sigma_zeta = 0.4        # OU noise intensity (0.65 -- 0.4 -- 0.3)
+zeta_bar = 0.6          # OU mean value (0.65)
+sigma_zeta = 0.45        # OU noise intensity (0.65 -- 0.4 -- 0.3)
 # fixed_zeta = 0.    # Constant ζ value when OU is not used, it can also be a float32 array of length equal to number of time steps
 t = np.arange(t_start, t_end, dt, dtype=np.float32)
 n_steps = len(t)
@@ -98,19 +98,19 @@ plot_connectivity_matrices = False,
 plot_heatmap= False,
 verbose = True
 ou_threshold = 2.  # Threshold for highlighting OU noise in plots
-single_dir_name = "simulation_results_new_new"
+single_dir_name = "simulation_results"
 multiple_dir_name = "multiple_simulations"
 
 # Number of runs
-runs = 20
+runs = 3
 # Import connectivity or not
-import_connectivity = True
+import_connectivity = False
 
 
 # =============================================================================
 # SEED
 # =============================================================================
-seed = 3 # Random seed for reproducibility
+seed = 333 # Random seed for reproducibility 333
 
 if __name__ == "__main__":
     """Create a txt file in simulation_results"""
