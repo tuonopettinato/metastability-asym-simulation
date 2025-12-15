@@ -202,7 +202,7 @@ def simulation():
         eta=eta,
         pattern_idx=pattern_idx,
         noise_level=noise_level,
-        seed=seed + 134 # + 19
+        seed=seed # + 19
     )
 
     # Simulation time span

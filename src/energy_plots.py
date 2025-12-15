@@ -70,6 +70,8 @@ def main():
     original_symm_path = os.path.join(npy_dir, "connectivity_symmetric.npy")
     history_path = os.path.join(npy_dir, "firing_rates.npy")
     phi_memory_patterns_path = os.path.join(npy_dir, "phi_memory_patterns.npy")
+    ou_path = os.path.join(npy_dir, "ou_process.npy")
+    ou_process = np.load(ou_path)
     overlaps = np.transpose(np.load(overlaps_path))
     W, h = np.load(connectivity_path), np.load(history_path)
     W_symm = np.load(original_symm_path)
@@ -150,11 +152,14 @@ def main():
     print(np.shape(h), np.shape(F_symm), np.shape(F_asymm))
     proj_flux_symm = project_flux_on_dynamics(h, F_symm)
     proj_flux_asymm = project_flux_on_dynamics(h, F_asymm)
+    # multiply the asymm projection by the ou process time point wise
+    proj_flux_asymm = proj_flux_asymm * ou_process
     plt.plot(t, proj_flux_symm, label='Projection of flux on dynamics (symm)', color='purple')
     plt.plot(t, proj_flux_asymm, label='Projection of flux on dynamics (asymm)', color='orange')
+
     plt.axhline(0, color='gray', linestyle='--', alpha=0.5)
     plt.ylabel("Projection")
-    plt.xlabel("Time (s)")
+    plt.xlabel("Time")
     plt.legend()
 
 
@@ -199,16 +204,18 @@ def main():
     axs[0].set_ylabel("Overlaps", fontsize=20)
     axs[0].legend(fontsize=18)
     axs[0].tick_params(axis='both', labelsize=18)
-    axs[0].set_xlim(6000, 7500)
+    axs[0].set_xlim(11500, 14000)
 
     axs[1].plot(t, proj_flux_symm/N, label='Symm', color='k', alpha=0.6)
+    # axs[1].plot(t, np.abs(proj_flux_asymm/N - proj_flux_symm/N), label='Symm', color='k', ls = 'dashed', alpha=0.6)
     axs[1].plot(t, proj_flux_asymm/N, label='Asymm', color='k', ls='dotted')
     axs[1].axhline(0, color='gray', linestyle='--', alpha=0.5)
     axs[1].set_ylabel("Force Proj. / N", fontsize=20)
     axs[1].set_xlabel("$t$", fontsize=20)
     axs[1].legend(fontsize=18)
     axs[1].tick_params(axis='both', labelsize=18)
-    axs[1].set_xlim(6000, 7500)
+    axs[1].set_xlim(11500, 14000)
+ 
 
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, "overlaps_and_projections.png"))

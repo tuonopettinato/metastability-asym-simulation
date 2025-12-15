@@ -250,7 +250,7 @@ def plot_network_dynamics(t, u, zeta, neuron_indices=None, max_display=10,
     if has_patterns and ax3 is not None:
         overlaps = calculate_pattern_overlaps(u, patterns, phi_params, g_params)
         for p in range(overlaps.shape[1]):
-            ax3.plot(t, overlaps[:, p], label=f'Pattern {p}')
+            ax3.plot(t, overlaps[:, p], label=f'P{p}')
         ax3.set_xlabel('Time')
         ax3.set_ylabel('Overlap (Pearson r)')
         ax3.set_title('Memory Pattern Overlaps')

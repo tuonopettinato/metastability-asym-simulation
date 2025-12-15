@@ -228,13 +228,13 @@ def generate_connectivity_matrix(N,
 
     return W_S, W_A, W, eta_raw, eta # eta_raw is the unprocessed patterns, eta is the processed patterns with φ applied
 
-def calculate_pattern_correlation_matrix(eta_patterns):
+def calculate_pattern_correlation_matrix(patterns):
     """
     Calculate the correlation matrix between memory patterns
     
     Parameters:
     -----------
-    eta_patterns : ndarray
+    patterns : ndarray
         Memory patterns of shape (p, N) where p is number of patterns, N is number of neurons
     
     Returns:
@@ -244,7 +244,7 @@ def calculate_pattern_correlation_matrix(eta_patterns):
     max_correlation : float
         Maximum absolute correlation between different patterns (excluding diagonal)
     """
-    p = eta_patterns.shape[0]
+    p = patterns.shape[0]
     correlation_matrix = np.zeros((p, p))
     
     # Calculate all pairwise correlations
@@ -253,8 +253,8 @@ def calculate_pattern_correlation_matrix(eta_patterns):
             if i == j:
                 correlation_matrix[i, j] = 1.0  # Perfect self-correlation
             else:
-                pattern_i = eta_patterns[i, :]
-                pattern_j = eta_patterns[j, :]
+                pattern_i = patterns[i, :]
+                pattern_j = patterns[j, :]
                 
                 # Check for zero variance patterns
                 if np.std(pattern_i) > 1e-10 and np.std(pattern_j) > 1e-10:
@@ -275,13 +275,13 @@ def calculate_pattern_correlation_matrix(eta_patterns):
     
     return correlation_matrix, max_correlation
 
-def plot_pattern_correlation_matrix(eta_patterns, enforce_max_correlation=False, ax=None, output_dir='../../simulation_results'):
+def plot_pattern_correlation_matrix(patterns, enforce_max_correlation=False, ax=None, output_dir='../../simulation_results'):
     """
     Plot the correlation matrix of memory patterns with constraint information
     
     Parameters:
     -----------
-    eta_patterns : ndarray
+    patterns : ndarray
         Memory patterns of shape (p, N)
     enforce_max_correlation : bool
         Whether correlation constraint was enforced
@@ -299,7 +299,7 @@ def plot_pattern_correlation_matrix(eta_patterns, enforce_max_correlation=False,
     max_correlation : float
         Maximum absolute correlation between different patterns
     """
-    correlation_matrix, max_correlation = calculate_pattern_correlation_matrix(eta_patterns)
+    correlation_matrix, max_correlation = calculate_pattern_correlation_matrix(patterns)
     # set NaN on the diagonal for better visualization
     np.fill_diagonal(correlation_matrix, np.nan)
 

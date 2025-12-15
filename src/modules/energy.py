@@ -92,10 +92,10 @@ def compute_energy(
         return energies, syn_terms, act_terms
     
 
-def compute_forces(W_symm, W_asymm, h, tau=1.0, phi_beta=1.5, phi_r_m=30.0, phi_x_r=2.0):
+def compute_forces(W_symm, W_asymm, h, tau=20.0, phi_beta=1.5, phi_r_m=30.0, phi_x_r=2.0):
     """
     Compute the symmetric and asymmetric forces for all neurons:
-    F_symm_i(u) = phi'(u_i) * [sum_j W^S_ij * phi_j(u_j) - u_i]
+    F_symm_i(u) = phi'(u_i) * [sum_j W^S_ij * phi_j(u_j) - u_i] 
     F_asymm_i(u) = sum_j W^A_ij * phi_j(u_j)
     
     Args:
@@ -114,8 +114,8 @@ def compute_forces(W_symm, W_asymm, h, tau=1.0, phi_beta=1.5, phi_r_m=30.0, phi_
     phi_deriv_u = derivative_sigmoid_function(u, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
 
     # Compute forces
-    F_symm =  phi_deriv_u * ((W_symm @ h.T).T - h) # Shape: (M, N)
-    F_asymm = phi_deriv_u * (W_asymm @ h.T).T         # Shape: (M, N)
+    F_symm =   ((W_symm @ h.T).T - h) / tau # * phi_deriv_u # Shape: (M, N). ## added / (tau)
+    F_asymm = (W_asymm @ h.T).T / tau  # * phi_deriv_u     # Shape: (M, N)
 
     # Compute the average value of the forces (integrate over the path) F_avg = ∫ F(h) dh / ∫ dh
     dh = np.linalg.norm(np.diff(h, axis=0), axis=1)  # Shape: (M-1,)

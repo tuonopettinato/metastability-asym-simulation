@@ -14,7 +14,7 @@ from torch import inverse, mul
 
 from modules.connectivity import generate_connectivity_matrix, plot_matrix
 from modules.dynamics import simulate_network, calculate_pattern_overlaps, initial_condition_creator 
-from modules.activation import sigmoid_function, relu_function, inverse_sigmoid_function
+from modules.activation import sigmoid_function, relu_function, inverse_sigmoid_function, step_function
 
 # ================ Simulation Parameters ================ 
 
@@ -57,6 +57,7 @@ from parameters import (
     zeta_bar,
     sigma_zeta,
     fixed_zeta,
+    undersampling,
 
     # Visualization parameters
     n_display,
@@ -64,6 +65,7 @@ from parameters import (
     verbose,
     single_dir_name,
     multiple_dir_name,
+    test_set,
 
     # number of runs
     runs,
@@ -85,8 +87,20 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
     np.random.seed(seed)  # for reproducibility
     # names of the output directories (already created in multiple_simulations, see below)
     output_dir = os.path.join(os.path.dirname(__file__), "..", f'{multiple_dir_name}{"_"}{N}')
-    plot_dir = os.path.join(output_dir, 'plots')
-    npy_dir = os.path.join(output_dir, "npy")
+    if test_set:
+        output_dir_test = os.path.join(output_dir, "test_set")
+        # create if it does not exist, if it exists do nothing
+        plot_dir = os.path.join(output_dir_test, 'plots')
+        npy_dir = os.path.join(output_dir_test, "npy")
+        os.makedirs(plot_dir, exist_ok=True)
+        os.makedirs(npy_dir, exist_ok=True)
+        firing_rates_dir = os.path.join(npy_dir, "firing_rates")
+        os.makedirs(firing_rates_dir, exist_ok=True)
+        ou_process_dir = os.path.join(npy_dir, "ou_process")
+        os.makedirs(ou_process_dir, exist_ok=True)
+    else:
+        plot_dir = os.path.join(output_dir, 'plots')
+        npy_dir = os.path.join(output_dir, "npy")
 
     # Prepare g function parameters
     g_params = {
@@ -101,7 +115,7 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
     }
     
     # Set up initial condition with proper noise calculation, no pattern index here (random) (i am changing that)
-    initial_condition = initial_condition_creator(init_cond_type, N, g_params=g_params, phi_params=phi_params, p=p, eta=eta, noise_level=noise_level, seed = seed)
+    initial_condition = initial_condition_creator(init_cond_type, N, g_params=g_params, phi_params=phi_params, p=p, eta=eta, noise_level=noise_level, pattern_idx=pattern_idx, seed=seed)
 
     # Run simulation with same φ parameters used in connectivity generation
     t, u, zeta = simulate_network(
@@ -147,6 +161,12 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
     
     # Calculate and save firing rates
     phi_u = sigmoid_function(u, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
+    if undersampling and undersampling > 1:
+        phi_u = phi_u[::undersampling]
+        t_us = t[::undersampling]
+    else:
+        t_us = t
+
     np.save(os.path.join(npy_dir, "firing_rates" , f'{"firing_rates_"}{addition}{".npy"}'), phi_u)
 
     # Save OU process
@@ -154,9 +174,12 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
     if zeta_array.size == 1:
         # Save constant zeta as array
         zeta_full = np.full_like(t, float(zeta_array.item()))
-        np.save(os.path.join(npy_dir, "ou_process" , f'{"ou_process_"}{addition}{".npy"}'), zeta_full)
     else:
-        np.save(os.path.join(npy_dir, "ou_process" , f'{"ou_process_"}{addition}{".npy"}'), zeta_array)
+        zeta_full = zeta_array
+    
+    if undersampling and undersampling > 1:
+        zeta_full = zeta_full[::undersampling]
+    np.save(os.path.join(npy_dir, "ou_process" , f'{"ou_process_"}{addition}{".npy"}'), zeta_full)
 
     # # Save pattern overlaps if available
     # if p > 0 and overlaps is not None:
@@ -165,10 +188,10 @@ def single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params
     plt.figure()
     if p > 0 and overlaps is not None:
         for i in range(p):
-            plt.plot(t, overlaps[:, i], label=f'Pattern {i+1}', linewidth=2)
+            plt.plot(t, overlaps[:, i], label=f'P{i+1}', linewidth=2)
         plt.xlabel('Time')
-        plt.ylabel('Pattern Overlap')
-        plt.title(f'Overlaps ($\\bar{{\\zeta}} = {zeta_bar} $, $\\sigma_\\zeta = {sigma_zeta}$, $\\tau_\\zeta = {tau_zeta}$, A={A_S}, seed = {seed})')
+        plt.ylabel('Pattern Overlaps')
+        plt.title(f'($T = {t_end}$, $\\bar{{\\zeta}} = {zeta_bar} $, $\\sigma_\\zeta = {sigma_zeta}$, $\\tau_\\zeta = {tau_zeta}$, A={A_S}, seed = {seed})')
         plt.grid(True)
         plt.legend()
     else:
@@ -259,6 +282,13 @@ def multiple_simulations():
     else:
         W_S, W_A, W, eta, phi_eta = generate_connectivity()
 
+    # Prepare g function parameters
+    g_params = {
+        'q_f': g_q,
+        'x_f': g_x
+    }
+    g_phi_eta = step_function(phi_eta, **g_params).astype(np.float32)
+
     # Display matrix statistics if verbose 
     if verbose:
         logger.info("\nMatrix statistics:")
@@ -287,7 +317,7 @@ def multiple_simulations():
     # Calculate and print pattern correlation analysis
     if not import_connectivity:
         from modules.connectivity import calculate_pattern_correlation_matrix, plot_pattern_correlation_matrix
-        correlation_matrix, actual_max_correlation = calculate_pattern_correlation_matrix(eta)
+        correlation_matrix, actual_max_correlation = calculate_pattern_correlation_matrix(g_phi_eta)
 
 
         if verbose:
@@ -300,7 +330,7 @@ def multiple_simulations():
 
         if N < 2001: # Only plot matrices for smaller networks
             # Plot matrices
-            _, _, _ = plot_pattern_correlation_matrix(eta,
+            _, _, _ = plot_pattern_correlation_matrix(g_phi_eta,
                                                     enforce_max_correlation=enforce_max_correlation,
                                                     ax=None, output_dir=output_dir)
 
@@ -400,6 +430,7 @@ def multiple_simulations():
         'model_type': model_type,
         'use_numba': use_numba,
         'n_display': n_display,
+        'undersampling': undersampling,
         'seed': seed
     }
     # Save parameters to npy file
@@ -417,7 +448,8 @@ def multiple_simulations():
     np.save(os.path.join(npy_dir, "phi_memory_patterns.npy"), phi_eta)
     np.save(os.path.join(npy_dir, "memory_patterns.npy"), eta)
 
-    for seed_index in range(334, 334+runs):  # Run multiple simulations
+    start = 1012
+    for seed_index in range(start, start+runs):  # Run multiple simulations
         # transform the number of the seed into a string called addition
         addition = str(seed_index)
         single_simulation(addition, W_S, W_A_sim, W, eta, phi_eta, t_span, ou_params, seed=seed_index, verbose=verbose)

@@ -51,7 +51,7 @@ apply_er_to_asymmetric = False  # Apply Erdős-Rényi to asymmetric component
 # Time and integration parameters
 tau = 20.0              # Time constant for neural dynamics
 t_start = 0.0           # Simulation start time
-t_end = 20000.0           # Simulation end time
+t_end = 24000.0           # Simulation end time
 dt = 0.2                # Time step for simulation output (increased for efficiency)
 
 # Performance optimization
@@ -59,7 +59,7 @@ use_numba = True        # Enable Numba JIT compilation for large networks (N > 1
 use_g = True  # Whether to apply g function to patterns, default is True in Recanatesi et al.
 
 # Initial condition settings
-init_cond_type = "Memory Pattern"  # Options: "Random", "Zero", "Memory Pattern", "Near Memory Pattern", "Negative Memory Pattern"
+init_cond_type = "Near Memory Pattern"  # Options: "Random", "Zero", "Memory Pattern", "Near Memory Pattern", "Negative Memory Pattern"
 pattern_idx = 2         # Which pattern to use (0-indexed) if using pattern-based init - neglected in multiple simulations
 noise_level = 0.5       # Noise level if using "Near Memory Pattern" init
 
@@ -82,6 +82,7 @@ fixed_zeta = (zeta_bar + 4*sigma_zeta *
                       0, None)
              ).astype(np.float32)
 
+undersampling = 200
 
 
 
@@ -93,8 +94,8 @@ fixed_zeta = (zeta_bar + 4*sigma_zeta *
 
 # Number of neurons to display in plots
 n_display = 10             # Maximum number of neurons to display in plots (reduced for 10k)
-show_sim_plots = False  # Whether to show individual plots for each variable
-plot_connectivity_matrices = False,
+show_sim_plots = True  # Whether to show individual plots for each variable
+plot_connectivity_matrices = True,
 plot_heatmap= False,
 verbose = True
 ou_threshold = 2.  # Threshold for highlighting OU noise in plots
@@ -102,9 +103,10 @@ single_dir_name = "simulation_results"
 multiple_dir_name = "multiple_simulations"
 
 # Number of runs
-runs = 3
+runs = 8
 # Import connectivity or not
 import_connectivity = False
+test_set = True # Wether to save in a test set folder 
 
 
 # =============================================================================
