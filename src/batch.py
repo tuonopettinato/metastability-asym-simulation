@@ -28,7 +28,7 @@ pivot = 150           # se 0 o None → usa boundaries reali
 base_dir = os.path.join(os.path.dirname(__file__), "..", f"{multiple_dir_name}_{N}", "npy")
 patterns_path = os.path.join(base_dir, "memory_patterns.npy")
 if test_set: 
-    base_dir = os.path.join(base_dir, "test_set")
+    base_dir = os.path.join(base_dir, "..", "test_set", "npy")
 else:
     base_dir = base_dir
 firing_dir = os.path.join(base_dir, "firing_rates")
@@ -119,7 +119,7 @@ print(f"Saved concatenated firing rates to {out_batch}")
 # ----------------------------------------------------
 # SAVE TRIAL BOUNDARIES
 # ----------------------------------------------------
-txt_path = os.path.join(firing_dir, "trials.txt")
+txt_path = os.path.join(firing_dir, "trials.txt") if not test_set else os.path.join(firing_dir, "test_trials.txt")
 with open(txt_path, "w") as f:
 
     if pivot:   # intervalli regolari

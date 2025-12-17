@@ -69,11 +69,13 @@ def main():
     overlaps_path = os.path.join(npy_dir, "pattern_overlaps.npy")
     original_symm_path = os.path.join(npy_dir, "connectivity_symmetric.npy")
     history_path = os.path.join(npy_dir, "firing_rates.npy")
+    currents_path = os.path.join(npy_dir, "neural_currents.npy")
     phi_memory_patterns_path = os.path.join(npy_dir, "phi_memory_patterns.npy")
     ou_path = os.path.join(npy_dir, "ou_process.npy")
     ou_process = np.load(ou_path)
     overlaps = np.transpose(np.load(overlaps_path))
     W, h = np.load(connectivity_path), np.load(history_path)
+    u = np.load(currents_path)
     W_symm = np.load(original_symm_path)
     phi_memory_patterns = np.load(phi_memory_patterns_path)
 
@@ -92,7 +94,7 @@ def main():
     E_total_traj = E_symm_traj + E_asymm_traj
 
     # compute symmetric force and asymmetric force (flux = F_ASYMM_AVG)
-    F_symm, F_asymm, _, flux = compute_forces(W_symm, W - W_symm, h, tau, phi_beta, phi_r_m, phi_x_r)
+    F_symm, F_asymm, _, flux = compute_forces(W_symm, W - W_symm, u, tau, phi_beta, phi_r_m, phi_x_r)
     # compute the energy gradient (numerically)
     energy_gradient = -np.gradient(E_total_traj)
 
@@ -150,10 +152,11 @@ def main():
     plt.subplot(414)
     # projection of the flux on the dynamics
     print(np.shape(h), np.shape(F_symm), np.shape(F_asymm))
-    proj_flux_symm = project_flux_on_dynamics(h, F_symm)
-    proj_flux_asymm = project_flux_on_dynamics(h, F_asymm)
+    proj_flux_symm = project_flux_on_dynamics(u, F_symm)
+    proj_flux_asymm = project_flux_on_dynamics(u, F_asymm)
     # multiply the asymm projection by the ou process time point wise
-    proj_flux_asymm = proj_flux_asymm * ou_process
+    proj_flux_asymm_no_ou = proj_flux_asymm
+    proj_flux_asymm = proj_flux_asymm_no_ou * ou_process
     plt.plot(t, proj_flux_symm, label='Projection of flux on dynamics (symm)', color='purple')
     plt.plot(t, proj_flux_asymm, label='Projection of flux on dynamics (asymm)', color='orange')
 
@@ -169,6 +172,7 @@ def main():
     if show_sim_plots:
         plt.show()
     
+    """
     # Make a new plot but just with overlaps and energy
     # make sure the energy takes the color of the winning overlap
     fig, axs = plt.subplots(2, 1, figsize=(13, 8), gridspec_kw={'height_ratios': [1, 2]})
@@ -196,6 +200,7 @@ def main():
 
     if show_sim_plots:
         plt.show()
+    """
 
     fig, axs = plt.subplots(2, 1, figsize=(12, 8), gridspec_kw={'height_ratios': [1, 2]})
 
@@ -206,9 +211,10 @@ def main():
     axs[0].tick_params(axis='both', labelsize=18)
     axs[0].set_xlim(11500, 14000)
 
-    axs[1].plot(t, proj_flux_symm/N, label='Symm', color='k', alpha=0.6)
-    # axs[1].plot(t, np.abs(proj_flux_asymm/N - proj_flux_symm/N), label='Symm', color='k', ls = 'dashed', alpha=0.6)
+    axs[1].plot(t, proj_flux_symm/(1.*N), label='Symm', color='k', alpha=0.6)
     axs[1].plot(t, proj_flux_asymm/N, label='Asymm', color='k', ls='dotted')
+    axs[1].plot(t, proj_flux_asymm_no_ou/N, label='Asymm (no OU)', color='k', ls='solid', alpha = 0.3)
+    axs[1].plot(t, (proj_flux_symm/1. + proj_flux_asymm)/N, label='Force', color='red', ls='solid', alpha = 0.3)
     axs[1].axhline(0, color='gray', linestyle='--', alpha=0.5)
     axs[1].set_ylabel("Force Proj. / N", fontsize=20)
     axs[1].set_xlabel("$t$", fontsize=20)

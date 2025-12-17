@@ -19,7 +19,7 @@ input_file_name = "all_firing_rates.npy"
 if not test_set:
     output_file_name = "all_firing_rates_undersampled_subset.npy"
 else:
-    output_file_name = "test_set_all_firing_rates_undersampled_subset.npy"
+    output_file_name = "test_all_firing_rates_undersampled_subset.npy"
 
 # Final selection: K active neurons + K/4 low neurons (100 total if K=80)
 neuron_indices = [

@@ -60,7 +60,7 @@ use_g = True  # Whether to apply g function to patterns, default is True in Reca
 
 # Initial condition settings
 init_cond_type = "Near Memory Pattern"  # Options: "Random", "Zero", "Memory Pattern", "Near Memory Pattern", "Negative Memory Pattern"
-pattern_idx = 2         # Which pattern to use (0-indexed) if using pattern-based init - neglected in multiple simulations
+pattern_idx = 1         # Which pattern to use (0-indexed) if using pattern-based init - neglected in multiple simulations
 noise_level = 0.5       # Noise level if using "Near Memory Pattern" init
 
 # Simulation options
@@ -103,7 +103,7 @@ single_dir_name = "simulation_results"
 multiple_dir_name = "multiple_simulations"
 
 # Number of runs
-runs = 8
+runs = 10
 # Import connectivity or not
 import_connectivity = False
 test_set = True # Wether to save in a test set folder 

@@ -100,7 +100,7 @@ def compute_forces(W_symm, W_asymm, h, tau=20.0, phi_beta=1.5, phi_r_m=30.0, phi
     
     Args:
         W: (N x N) connectivity matrix
-        h: (M x N) array of firing rates (M states), or (N,) single state
+        h: (M x N) array of neural currents (M states), or (N,) single state
         tau: time constant
         phi_beta, phi_r_m, phi_x_r: activation parameters
     Returns:
@@ -108,14 +108,14 @@ def compute_forces(W_symm, W_asymm, h, tau=20.0, phi_beta=1.5, phi_r_m=30.0, phi
         F_asymm: (M x N) array of asymmetric forces for each state, or (N,) single state
     """
     h, single_state, M, N = normalize_shape(h)
-    u = inverse_sigmoid_function(h, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
+    u = h # u = inverse_sigmoid_function(h, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
 
     # Compute activation function values
     phi_deriv_u = derivative_sigmoid_function(u, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
 
     # Compute forces
-    F_symm =   ((W_symm @ h.T).T - h) / tau # * phi_deriv_u # Shape: (M, N). ## added / (tau)
-    F_asymm = (W_asymm @ h.T).T / tau  # * phi_deriv_u     # Shape: (M, N)
+    F_symm =   phi_deriv_u * ((W_symm @ h.T).T - h)  # / tau Shape: (M, N) 
+    F_asymm = phi_deriv_u * (W_asymm @ h.T).T      # / tau Shape: (M, N)
 
     # Compute the average value of the forces (integrate over the path) F_avg = ∫ F(h) dh / ∫ dh
     dh = np.linalg.norm(np.diff(h, axis=0), axis=1)  # Shape: (M-1,)
