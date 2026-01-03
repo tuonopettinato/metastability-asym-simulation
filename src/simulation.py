@@ -398,8 +398,8 @@ def simulation():
                  'b-',
                  alpha=0.7,
                  linewidth=2,
-                 label=f'N({pattern_mean},{pattern_sigma}²)')
-    ax_twin.set_ylabel('PDF', color='blue')
+                 label=f'N({pattern_mean},{pattern_sigma})')
+    ax_twin.set_ylabel('PDF', color='blue', fontsize = 18)
     ax_twin.tick_params(axis='y', labelcolor='blue')
 
     # Plot φ (phi) activation function
@@ -422,13 +422,13 @@ def simulation():
                 rotation=90,
                 verticalalignment='center')
 
-    ax.set_xlabel('Input Value')
-    ax.set_ylabel('φ(x)', color='red')
+    ax.set_xlabel('Input Value', fontsize = 20)
+    ax.set_ylabel('φ(x)', color='red', fontsize = 18)
     ax.tick_params(axis='y', labelcolor='red')
-    ax.set_title('Pattern Distribution N(μ,σ) & Activation Function φ(x)')
+    # ax.set_title('Pattern Distribution N(μ,σ) & Activation Function φ(x)')
     ax.grid(True, alpha=0.3)
-    ax.legend(loc='upper left')
-    ax_twin.legend(loc='upper right')
+    ax.legend(loc='upper left', fontsize = 16)
+    ax_twin.legend(loc='upper right', fontsize = 16)
 
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'gaussian_activation_plot.png'), dpi=150)

@@ -92,7 +92,7 @@ def compute_energy(
         return energies, syn_terms, act_terms
     
 
-def compute_forces(W_symm, W_asymm, h, tau=20.0, phi_beta=1.5, phi_r_m=30.0, phi_x_r=2.0):
+def compute_forces(W_symm, W_asymm, u, tau=20.0, phi_beta=1.5, phi_r_m=30.0, phi_x_r=2.0):
     """
     Compute the symmetric and asymmetric forces for all neurons:
     F_symm_i(u) = phi'(u_i) * [sum_j W^S_ij * phi_j(u_j) - u_i] 
@@ -107,31 +107,29 @@ def compute_forces(W_symm, W_asymm, h, tau=20.0, phi_beta=1.5, phi_r_m=30.0, phi
         F_symm: (M x N) array of symmetric forces for each state, or (N,) single state
         F_asymm: (M x N) array of asymmetric forces for each state, or (N,) single state
     """
-    h, single_state, M, N = normalize_shape(h)
-    u = h # u = inverse_sigmoid_function(h, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
+    u, single_state, M, N = normalize_shape(u)
 
     # Compute activation function values
+    phi_u = sigmoid_function(u, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
     phi_deriv_u = derivative_sigmoid_function(u, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
 
     # Compute forces
-    F_symm =   phi_deriv_u * ((W_symm @ h.T).T - h)  # / tau Shape: (M, N) 
-    F_asymm = phi_deriv_u * (W_asymm @ h.T).T      # / tau Shape: (M, N)
-
+    F_symm =   phi_deriv_u * ((W_symm @ phi_u.T).T - u)  # / tau Shape: (M, N) 
+    F_asymm = phi_deriv_u * (W_asymm @ phi_u.T).T      # / tau Shape: (M, N)
     # Compute the average value of the forces (integrate over the path) F_avg = ∫ F(h) dh / ∫ dh
-    dh = np.linalg.norm(np.diff(h, axis=0), axis=1)  # Shape: (M-1,)
-    dh = np.append(dh, dh[-1])  # Assume last step same as second last for simplicity
-    F_symm_avg = np.sum(F_symm * dh[:, np.newaxis], axis=0) / np.sum(dh)
-    F_asymm_avg = np.sum(F_asymm * dh[:, np.newaxis], axis=0) / np.sum(dh)
-
+    du = np.linalg.norm(np.diff(u, axis=0), axis=1)  # Shape: (M-1,)
+    du = np.append(du, du[-1])  # Assume last step same as second last for simplicity
+    F_symm_avg = np.sum(F_symm * du[:, np.newaxis], axis=0) / np.sum(du)
+    F_asymm_avg = np.sum(F_asymm * du[:, np.newaxis], axis=0) / np.sum(du)
     if single_state:
         return F_symm[0], F_asymm[0]
     else:
         return F_symm, F_asymm, F_symm_avg, F_asymm_avg
     
-def project_flux_on_dynamics(history, flux, eps=1e-12):
+def project_on_dynamics(history, F, eps=1e-12):
     """
-    Compute the projection of the flux on the direction of the dynamics for each time step:
-        proj[t] = Flux(t) · (state(t+1) - state(t)) / ||state(t+1) - state(t)||
+    Compute the projection a quantity F on the direction of the dynamics for each time step:
+        proj[t] = F(t) · (state(t+1) - state(t)) / ||state(t+1) - state(t)||
 
     Args:
         history: (M, N) array, states over time (M time steps, N neurons)
@@ -141,15 +139,15 @@ def project_flux_on_dynamics(history, flux, eps=1e-12):
     Returns:
         proj: (M,) array of projections for t = 0..M-2, last entry same as M-2
     """
-    if history.ndim != 2 or flux.ndim != 2:
-        raise ValueError("history and flux must be 2D arrays of shape (M, N).")
-    if history.shape != flux.shape:
-        raise ValueError("history and flux must have the same shape (M, N).")
+    if history.ndim != 2 or F.ndim != 2:
+        raise ValueError("history and F must be 2D arrays of shape (M, N).")
+    if history.shape != F.shape:
+        raise ValueError("history and F must have the same shape (M, N).")
 
     M, N = history.shape
     delta = np.diff(history, axis=0)             # (M-1, N), state(t+1) - state(t)
     norms = np.linalg.norm(delta, axis=1)        # (M-1,)
-    dots = np.sum(flux[:-1, :] * delta, axis=1)  # (M-1,) this is flux(t) · delta(t)
+    dots = np.sum(F[:-1, :] * delta, axis=1)  # (M-1,) this is F(t) · delta(t)
 
     proj = np.zeros(M - 1, dtype=float)
     mask = norms > eps

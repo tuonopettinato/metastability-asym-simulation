@@ -162,3 +162,7 @@ fig.update_layout(
 html_path = os.path.join(plots_dir, "batch_overlaps.html")
 fig.write_html(html_path, include_plotlyjs="cdn")
 print(f"\nSaved Plotly HTML to {html_path}")
+# save npy of all overlaps too
+npy_path = os.path.join(plots_dir, "batch_overlaps.npy")
+np.save(npy_path, all_overlaps.astype(np.float32))
+print(f"Saved overlaps numpy to {npy_path}")

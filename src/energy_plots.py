@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from modules.activation import step_function
 from modules.connectivity import generate_connectivity_matrix, plot_matrix
 from modules.dynamics import simulate_network, calculate_pattern_overlaps
-from modules.energy import compute_energy, compute_forces, project_flux_on_dynamics
+from modules.energy import compute_energy, compute_forces, project_on_dynamics
 
 # Import all parameters from parameters.py
 from parameters import (
@@ -152,8 +152,8 @@ def main():
     plt.subplot(414)
     # projection of the flux on the dynamics
     print(np.shape(h), np.shape(F_symm), np.shape(F_asymm))
-    proj_flux_symm = project_flux_on_dynamics(u, F_symm)
-    proj_flux_asymm = project_flux_on_dynamics(u, F_asymm)
+    proj_flux_symm = project_on_dynamics(u, F_symm)
+    proj_flux_asymm = project_on_dynamics(u, F_asymm)
     # multiply the asymm projection by the ou process time point wise
     proj_flux_asymm_no_ou = proj_flux_asymm
     proj_flux_asymm = proj_flux_asymm_no_ou * ou_process
@@ -207,20 +207,21 @@ def main():
     for i in range(p):
         axs[0].plot(t, overlaps[i], label=f'P {i+1}')
     axs[0].set_ylabel("Overlaps", fontsize=20)
-    axs[0].legend(fontsize=18)
+    # axs[0].legend(fontsize=18) # no legend here, it is quite combersome in the plot
     axs[0].tick_params(axis='both', labelsize=18)
-    axs[0].set_xlim(11500, 14000)
+    axs[0].set_xlim(12000, 14000)
 
-    axs[1].plot(t, proj_flux_symm/(1.*N), label='Symm', color='k', alpha=0.6)
-    axs[1].plot(t, proj_flux_asymm/N, label='Asymm', color='k', ls='dotted')
-    axs[1].plot(t, proj_flux_asymm_no_ou/N, label='Asymm (no OU)', color='k', ls='solid', alpha = 0.3)
-    axs[1].plot(t, (proj_flux_symm/1. + proj_flux_asymm)/N, label='Force', color='red', ls='solid', alpha = 0.3)
+    axs[1].plot(t, proj_flux_symm/(1.*N), label='Sym', color='k', alpha=1.)
+    axs[1].plot(t, proj_flux_asymm/N, label='$\\zeta(t) \cdot$ Asym', color='k', ls='solid', alpha = 0.5)
+    # axs[1].plot(t, proj_flux_asymm_no_ou/N, label='Asym - no OU', color='k', ls='dotted')
+    axs[1].plot(t, (proj_flux_symm/1. + proj_flux_asymm)/N, label='Total', color='red', ls='solid', alpha = 0.5)
     axs[1].axhline(0, color='gray', linestyle='--', alpha=0.5)
     axs[1].set_ylabel("Force Proj. / N", fontsize=20)
     axs[1].set_xlabel("$t$", fontsize=20)
     axs[1].legend(fontsize=18)
     axs[1].tick_params(axis='both', labelsize=18)
-    axs[1].set_xlim(11500, 14000)
+    axs[1].set_xlim(12000, 14000)
+    axs[1].set_ylim(-0.2, 0.3)
  
 
     plt.tight_layout()

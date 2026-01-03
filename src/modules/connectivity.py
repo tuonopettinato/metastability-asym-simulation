@@ -311,13 +311,13 @@ def plot_pattern_correlation_matrix(patterns, enforce_max_correlation=False, ax=
     # Plot correlation matrix with annotations
     sns.heatmap(correlation_matrix, 
                 annot=True, 
-                fmt='.4f', 
+                fmt='.4f',
                 cmap='RdBu_r', 
                 vmin=-max_correlation, 
                 vmax=max_correlation, 
                 center=0,
                 ax=ax,
-                cbar_kws={"label": "Correlation Coefficient"},
+                #cbar_kws={"label": "Correlation Coefficient"},
                 square=True)
     
     # Set title with constraint information
@@ -327,15 +327,14 @@ def plot_pattern_correlation_matrix(patterns, enforce_max_correlation=False, ax=
     else:
         constraint_info = "\nNo correlation constraint applied"
     
-    title = f"Memory Pattern Correlation Matrix{constraint_info}\nActual max correlation: {max_correlation:.3f}"
-    ax.set_title(title, fontsize=12)
-    ax.set_xlabel('Pattern Index')
-    ax.set_ylabel('Pattern Index')
+    #title = f"Memory Pattern Correlation Matrix{constraint_info}\nActual max correlation: {max_correlation:.3f}"
+    # ax.set_xlabel('Pattern Index', fontsize=18)
+    # ax.set_ylabel('Pattern Index', fontsize=18)
     
     # Set custom tick labels
     p = correlation_matrix.shape[0]
-    ax.set_xticklabels([f'η{i+1}' for i in range(p)])
-    ax.set_yticklabels([f'η{i+1}' for i in range(p)])
+    ax.set_xticklabels([f'η{i+1}' for i in range(p)], fontsize=14)
+    ax.set_yticklabels([f'η{i+1}' for i in range(p)], fontsize=14)
     plt.savefig(os.path.join(output_dir, "pattern_correlation_matrix.png"), bbox_inches='tight', dpi=300)
     plt.tight_layout()
     
@@ -390,9 +389,9 @@ def plot_matrix(matrix, title, cmap='RdBu_r', ax=None):
         yticklabels=False
     )
 
-    ax.set_title(title, fontsize=14)
-    ax.set_xlabel("Neuron j")
-    ax.set_ylabel("Neuron i")
+    ax.set_title(title, fontsize=20)
+    ax.set_xlabel("Neuron j", fontsize=18)
+    ax.set_ylabel("Neuron i", fontsize=18)
 
     # Return the figure if created, None otherwise
     return fig
