@@ -389,9 +389,9 @@ def plot_matrix(matrix, title, cmap='RdBu_r', ax=None):
         yticklabels=False
     )
 
-    ax.set_title(title, fontsize=20)
-    ax.set_xlabel("Neuron j", fontsize=18)
-    ax.set_ylabel("Neuron i", fontsize=18)
+    ax.set_title(title, fontsize=25)
+    ax.set_xlabel("Neuron j", fontsize=20)
+    ax.set_ylabel("Neuron i", fontsize=20)
 
     # Return the figure if created, None otherwise
     return fig

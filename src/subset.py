@@ -49,11 +49,17 @@ firing_dir = os.path.join(base_dir, "firing_rates")
 input_file = os.path.join(firing_dir, input_file_name)
 output_file = os.path.join(firing_dir, output_file_name)
 
+memory_patterns_dir = os.path.join(os.path.dirname(__file__), "..", "memory_patterns")
+patterns_file = os.path.join(memory_patterns_dir, "patterns.npy")
+
 # -----------------------------
 # LOAD DATA
 # -----------------------------
 if not os.path.exists(input_file):
     raise FileNotFoundError(f"Input file not found: {input_file}")
+
+if not os.path.exists(patterns_file):
+    raise FileNotFoundError(f"Patterns file not found: {patterns_file}")
 
 data = np.load(input_file)
 print(f"Original data shape: {data.shape}")
@@ -76,6 +82,12 @@ if max(neuron_indices) >= data.shape[1]:
 # Slice the dataset over the selected neurons
 subset_data = data[:, neuron_indices]
 print(f"Reduced data shape: {subset_data.shape}")
+
+# Slice the patterns file to keep only selected neurons (shape is (4, N))
+patterns = np.load(patterns_file)
+subset_patterns = patterns[:, neuron_indices]
+np.save(os.path.join(memory_patterns_dir, "patterns_subset.npy"), subset_patterns)
+print(f"Saved reduced patterns to patterns_subset.npy with shape: {subset_patterns.shape}")
 
 # -----------------------------
 # SAVE OUTPUT

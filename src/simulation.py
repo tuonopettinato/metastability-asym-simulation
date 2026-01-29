@@ -168,25 +168,47 @@ def simulation():
             ])
             print(f"  η{i+1}: [{row_str}]")
 
-    if N < 2001 and plot_connectivity_matrices: # Only plot matrices for smaller networks
+    if N < 2001 and plot_connectivity_matrices:  # Only plot matrices for smaller networks
         logger.info("\nPlotting connectivity matrices...")
-        # Plot matrices
-        _, _, _ = plot_pattern_correlation_matrix(g_phi_eta,
-                                                enforce_max_correlation=enforce_max_correlation,
-                                                ax=None, output_dir=output_dir)
 
-        fig1 = plt.figure(figsize=(15, 5))
-        ax1 = fig1.add_subplot(131)
-        ax2 = fig1.add_subplot(132)
-        ax3 = fig1.add_subplot(133)
+        # Plot pattern correlation matrix
+        _, _, _ = plot_pattern_correlation_matrix(
+            g_phi_eta,
+            enforce_max_correlation=enforce_max_correlation,
+            ax=None,
+            output_dir=output_dir
+        )
 
-        plot_matrix(W_S, "Symmetric Component", ax=ax1)
-        plot_matrix(W_A, "Asymmetric Component", ax=ax2)
-        plot_matrix(W, "Total Connectivity", ax=ax3)
+        # --- Figure 1: W^S and W^A together ---
+        fig1 = plt.figure(figsize=(10, 5))
+        ax1 = fig1.add_subplot(121)
+        ax2 = fig1.add_subplot(122)
+
+        plot_matrix(W_S, "$W^S$", ax=ax1)
+        plot_matrix(W_A, "$W^A$", ax=ax2)
 
         plt.tight_layout()
-        plt.savefig(os.path.join(output_dir, "connectivity_matrices.png"), dpi=150)
-        logger.info(f"Saved matrices visualization")
+        plt.savefig(
+            os.path.join(output_dir, "connectivity_matrices_WS_WA.png"),
+            dpi=150
+        )
+        plt.close(fig1)
+
+        # --- Figure 2: W^S + W^A separately ---
+        fig2 = plt.figure(figsize=(5, 5))
+        ax3 = fig2.add_subplot(111)
+
+        plot_matrix(W, "$W^S + W^A$", ax=ax3)
+
+        plt.tight_layout()
+        plt.savefig(
+            os.path.join(output_dir, "connectivity_matrix_W_total.png"),
+            dpi=150
+        )
+        plt.close(fig2)
+
+        logger.info("Saved connectivity matrices visualizations")
+
     else:
         logger.info(
             "\nSkipping matrix plots for large network (N > 2000) or to save time and resources."

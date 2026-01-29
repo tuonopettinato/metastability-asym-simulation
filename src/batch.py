@@ -1,8 +1,7 @@
 """
-This script processes multiple simulation runs by loading their firing rates,
-computing pattern overlaps, concatenating the results, and saving both the
-concatenated firing rates and trial boundaries. It also generates an HTML
-plot of the overlaps using Plotly.
+This script processes multiple simulation runs by loading their firing rates and OU processes,
+computing pattern overlaps, concatenating the results, and saving both the concatenated firing rates,
+OU processes, and trial boundaries. It also generates an HTML plot of the overlaps using Plotly.
 """
 
 import os
@@ -24,15 +23,16 @@ pivot = 150           # se 0 o None → usa boundaries reali
 # ----------------------------------------------------
 # PATHS
 # ----------------------------------------------------
-
 base_dir = os.path.join(os.path.dirname(__file__), "..", f"{multiple_dir_name}_{N}", "npy")
 patterns_path = os.path.join(base_dir, "memory_patterns.npy")
+
 if test_set: 
     base_dir = os.path.join(base_dir, "..", "test_set", "npy")
 else:
     base_dir = base_dir
-firing_dir = os.path.join(base_dir, "firing_rates")
 
+firing_dir = os.path.join(base_dir, "firing_rates")
+ou_dir = os.path.join(base_dir, "ou_process")
 plots_dir = os.path.join(base_dir, "..", "plot_batch")
 os.makedirs(plots_dir, exist_ok=True)
 
@@ -67,6 +67,7 @@ if len(FILES) == 0:
 # ----------------------------------------------------
 all_rates = []
 all_overlaps = []
+all_ou = []
 boundaries = []   # per boundaries reali
 
 current_start = 0
@@ -78,11 +79,19 @@ current_end = -1
 for idx in FILES:
     print(f"\nProcessing file {idx} ...")
 
-    path = os.path.join(firing_dir, f"firing_rates_{idx}.npy")
-    if not os.path.exists(path):
-        raise FileNotFoundError(path)
-
-    rates = np.load(path)  # shape (T, N)
+    # --- firing rates ---
+    path_rates = os.path.join(firing_dir, f"firing_rates_{idx}.npy")
+    if not os.path.exists(path_rates):
+        raise FileNotFoundError(path_rates)
+    rates = np.load(path_rates)  # shape (T, N)
+    
+    # --- OU process ---
+    path_ou = os.path.join(ou_dir, f"ou_process_{idx}.npy")
+    if not os.path.exists(path_ou):
+        raise FileNotFoundError(path_ou)
+    ou = np.load(path_ou)  # shape (T, N) o (T, dim OU)
+    
+    # --- overlaps ---
     overlaps = calculate_pattern_overlaps(
         rates, eta, phi_params, g_params,
         use_numba=use_numba, use_g=use_g
@@ -92,6 +101,7 @@ for idx in FILES:
 
     all_rates.append(rates)
     all_overlaps.append(overlaps)
+    all_ou.append(ou)
 
     if not pivot:
         current_start = current_end + 1
@@ -105,9 +115,12 @@ for idx in FILES:
 # ----------------------------------------------------
 all_rates = np.concatenate(all_rates, axis=0)
 all_overlaps = np.concatenate(all_overlaps, axis=0)
+all_ou = np.concatenate(all_ou, axis=0)
 
 total_T = all_rates.shape[0]
-print(f"\nTotal concatenated timesteps: {total_T}")
+total_T_ou = all_ou.shape[0]
+print(f"\nTotal concatenated timesteps (firing rates): {total_T}")
+print(f"Total concatenated timesteps (OU process): {total_T_ou}")
 
 # ----------------------------------------------------
 # SAVE CONCATENATED FIRING RATES
@@ -115,6 +128,13 @@ print(f"\nTotal concatenated timesteps: {total_T}")
 out_batch = os.path.join(firing_dir, "all_firing_rates.npy")
 np.save(out_batch, all_rates.astype(np.float32))
 print(f"Saved concatenated firing rates to {out_batch}")
+
+# ----------------------------------------------------
+# SAVE CONCATENATED OU PROCESS
+# ----------------------------------------------------
+out_ou = os.path.join(ou_dir, "all_ou_process.npy")
+np.save(out_ou, all_ou.astype(np.float32))
+print(f"Saved concatenated OU process to {out_ou}")
 
 # ----------------------------------------------------
 # SAVE TRIAL BOUNDARIES
@@ -162,6 +182,7 @@ fig.update_layout(
 html_path = os.path.join(plots_dir, "batch_overlaps.html")
 fig.write_html(html_path, include_plotlyjs="cdn")
 print(f"\nSaved Plotly HTML to {html_path}")
+
 # save npy of all overlaps too
 npy_path = os.path.join(plots_dir, "batch_overlaps.npy")
 np.save(npy_path, all_overlaps.astype(np.float32))

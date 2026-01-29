@@ -7,7 +7,7 @@ from parameters import g_q, g_x, multiple_dir_name, N, seed
 # --------------------------------------------------
 # FIXED SEED
 # --------------------------------------------------
-np.random.seed(seed)
+np.random.seed(seed) # add +1 is niceer
 
 
 # --------------------------------------------------
@@ -178,10 +178,34 @@ fig.update_layout(
     yaxis_title="Percentage (%)",
     barmode="group",
     height=650,
-    width=1100
+    width=1100,
+    font=dict(size=25)
 )
 
 fig.show()
+
+# --------------------------------------------------
+# BAR PLOT WITH MATPLOTLIB (PERCENTAGES)
+# --------------------------------------------------
+x = np.arange(len(labels))
+width = 0.35
+
+plt.figure(figsize=(14, 7))
+
+plt.bar(x - width/2, global_perc, width, label="All neurons (%)")
+plt.bar(x + width/2, subset_perc, width, label=f"Subset ({K}) (%)")
+
+plt.xticks(x, labels, rotation=30, ha="right", fontsize=20)
+plt.yticks(fontsize=20)
+# plt.ylabel("Percentage (%)", fontsize=20)
+# plt.xlabel("Activity class", fontsize=20)
+
+plt.legend(fontsize=20)
+plt.grid(axis="y", linestyle="--", alpha=0.5)
+
+plt.tight_layout()
+plt.show()
+
 
 # --------------------------------------------------
 # FINAL PRINT
@@ -189,3 +213,14 @@ fig.show()
 print(f"\nFINAL COMPARISON (percentages) for subset size {K}")
 for lbl, g, s in zip(labels, global_perc, subset_perc):
     print(f"{lbl:12s} | global: {g:6.2f}% | subset: {s:6.2f}%")
+
+# --------------------------------------------------
+# TOTAL VARIATION DISTANCE
+# --------------------------------------------------
+p_global = np.array(global_counts) / N_total
+p_subset = np.array(subset_counts) / K
+
+tv_distance = 0.5 * np.sum(np.abs(p_global - p_subset))
+
+print("\nTOTAL VARIATION DISTANCE")
+print(f"D_TV = {tv_distance:.4f}")

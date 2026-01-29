@@ -21,6 +21,8 @@ __pycache__/
 # loaded_results/
 loaded_results/
 
+# memory patterns
+memory_patterns/
 
 # C extensions
 *.so
