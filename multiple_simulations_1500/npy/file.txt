@@ -1,9 +1,0 @@
-all_firing_rates.npy
-connectivity_asymmetric.npy
-connectivity_symmetric.npy
-file.txt
-firing_rates
-memory_patterns.npy
-ou_process
-phi_memory_patterns.npy
-simulation_parameters.npy
