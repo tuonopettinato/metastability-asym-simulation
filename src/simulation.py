@@ -39,6 +39,7 @@ def simulation():
     enforce_max_correlation,
     apply_phi_to_patterns,
     apply_er_to_asymmetric,
+    include_symmetrized_asymmetric,
 
     # Simulation parameters
     tau,
@@ -112,6 +113,7 @@ def simulation():
         phi_x_r=phi_x_r,
         apply_phi_to_patterns=apply_phi_to_patterns,
         apply_er_to_asymmetric=apply_er_to_asymmetric,
+        include_symmetrized_asymmetric=include_symmetrized_asymmetric,
         enforce_max_correlation=enforce_max_correlation)
     logger.info("Matrices generated successfully!")
 

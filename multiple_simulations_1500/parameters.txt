@@ -26,7 +26,7 @@ t_end: 24000.0
 dt: 0.2
 tau: 20.0
 init_cond_type: Near Memory Pattern
-pattern_idx: 3
+pattern_idx: 0
 noise_level: 0.5
 use_symmetric_only: False
 model_type: recanatesi

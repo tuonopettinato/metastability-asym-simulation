@@ -24,6 +24,7 @@ def generate_connectivity_matrix(N,
                                  phi_x_r=0.0,
                                  apply_phi_to_patterns=True,
                                  apply_er_to_asymmetric=False,
+                                 include_symmetrized_asymmetric=False,
                                  enforce_max_correlation=False):
     """
     Generate connectivity matrices (symmetric, asymmetric, and total)
@@ -64,6 +65,10 @@ def generate_connectivity_matrix(N,
         Whether to apply Erdős-Rényi connectivity to asymmetric component. 
         If True: Apply c_ij to both symmetric and asymmetric components.
         If False: Apply c_ij only to symmetric component, default: False
+    include_symmetrized_asymmetric : bool
+        Whether to include the symmetrized part of the asymmetric component into the symmetric component.
+        If True: W_S = W_S + (W_A + W_A.T)/2 and W_A becomes purely antisymmetric.
+        If False: W_S and W_A are computed independently
     enforce_max_correlation : bool
         Whether to enforce correlation constraint by selecting patterns with low mutual correlation
         from a larger pool, default: False
@@ -222,6 +227,10 @@ def generate_connectivity_matrix(N,
 
     # Calculate total connectivity matrix
     W = W_S + W_A
+
+    if include_symmetrized_asymmetric:
+        W_S += (W_A + W_A.T) / 2 # include symmetrized asymmetric part into symmetric part
+        # the remaining part of W_A will be the antisymmetric part only
 
     # Double-check that diagonal elements are zero in total matrix
     np.fill_diagonal(W, 0)

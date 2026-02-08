@@ -24,6 +24,9 @@ loaded_results/
 # memory patterns
 memory_patterns/
 
+# multiple simulations results
+multiple_simulations_results/
+
 # C extensions
 *.so
 
