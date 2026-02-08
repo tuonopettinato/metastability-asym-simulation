@@ -7,40 +7,16 @@ The results are saved in the 'loaded_results' directory.
 It also computes the energy trajectories for both the original symmetric and asymmetric components
 and the new symmetric and antisymmetric components derived from the total connectivity matrix.
 """
-
-import re
+import os
 import numpy as np
 from scipy.integrate import quad
 from scipy.interpolate import interp1d
-from modules.activation import inverse_sigmoid_function, inverse_relu_function
-from modules.activation import derivative_sigmoid_function, derivative_relu_function
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from modules.activation import inverse_sigmoid_function, sigmoid_function, derivative_sigmoid_function
 
 
-def compute_energy(
-    W, h,
-    phi_function_type="sigmoid",
-    phi_amplitude=1.0,
-    phi_beta=1.5,
-    phi_r_m=30.0,
-    phi_x_r=2.0,
-    num_interp_points=1000,
-    activation_term=True
-):
-    """
-    Compute total energy E(h) = -0.5 * h^T W h + sum_i ∫₀^{h_i} phi⁻¹(x) dx
-    using lookup-table interpolation for fast integration.
-
-    Args:
-        W: (N x N) connectivity matrix
-        h: (M x N) array of firing rates (M states), or (N,) single state
-        phi_function_type: "sigmoid" or "relu"
-        phi_amplitude, phi_beta, phi_r_m, phi_x_r: activation inverse parameters
-        num_interp_points: resolution of lookup table
-        activation_term: whether to include activation term in energy computation
-
-    Returns:
-        energies: (M,) energy values for each state, or scalar if h was 1D
-    """
+def normalize_shape(h):
     # Normalize shape: (M, N)
     if h.ndim == 1:
         h = h.reshape(1, -1)
@@ -48,18 +24,39 @@ def compute_energy(
     else:
         single_state = False
     M, N = h.shape
+    return h, single_state, M, N
+
+def compute_energy(
+    W, h,
+    tau=1.0,
+    phi_beta=1.5,
+    phi_r_m=30.0,
+    phi_x_r=2.0,
+    num_interp_points=1000,
+    activation_term=True
+):
+    """
+    h = phi(u) is the firing rate vector
+    Compute total energy E(u) = -0.5 * phi(u)^T W phi(u) + sum_i ∫₀^{phi(u_i)} phi⁻¹(x) dx 
+    using lookup-table interpolation for fast integration.
+    
+
+    Args:
+        W: (N x N) connectivity matrix
+        h: (M x N) array of firing rates (M states), or (N,) single state
+        phi_beta, phi_r_m, phi_x_r: activation inverse parameters
+        num_interp_points: resolution of lookup table
+        activation_term: whether to include activation term in energy computation
+
+    Returns:
+        energies: (M,) energy values for each state, or scalar if h was 1D
+    """
+    h, single_state, M, N = normalize_shape(h)
 
     # Select inverse function and clipping range
-    if phi_function_type == "sigmoid":
-        inv_func = lambda v: inverse_sigmoid_function(v, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
-        h_clip_min = 1e-4
-        h_clip_max = phi_r_m - 1e-4
-    elif phi_function_type == "relu":
-        inv_func = lambda v: inverse_relu_function(v, amplitude=phi_amplitude)
-        h_clip_min = 0.0
-        h_clip_max = phi_amplitude * 1.5
-    else:
-        raise ValueError("Unsupported phi_function_type")
+    inv_func = lambda v: inverse_sigmoid_function(v, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
+    h_clip_min = 1e-4
+    h_clip_max = phi_r_m - 1e-4
 
     # Precompute lookup table
     x_vals = np.linspace(h_clip_min, h_clip_max, num_interp_points)
@@ -84,14 +81,144 @@ def compute_energy(
         syn_terms[t] = energy_syn
 
         # Activation term via lookup-table integration
-        energy_act = np.sum(interp_integral(h_t_clipped))
+        energy_act = np.sum(interp_integral(h_t_clipped))  if activation_term else 0.0
         act_terms[t] = energy_act
 
-        energies[t] = energy_syn + energy_act if activation_term else energy_syn
+        energies[t] = energy_syn + energy_act # Total energy
 
     if single_state:
         return energies[0], syn_terms[0], act_terms[0]
     else:
         return energies, syn_terms, act_terms
+    
+
+def compute_forces(W_symm, W_asymm, u, tau=20.0, phi_beta=1.5, phi_r_m=30.0, phi_x_r=2.0):
+    """
+    Compute the symmetric and asymmetric forces for all neurons:
+    F_symm_i(u) = phi'(u_i) * [sum_j W^S_ij * phi_j(u_j) - u_i] 
+    F_asymm_i(u) = sum_j W^A_ij * phi_j(u_j)
+    
+    Args:
+        W: (N x N) connectivity matrix
+        h: (M x N) array of neural currents (M states), or (N,) single state
+        tau: time constant
+        phi_beta, phi_r_m, phi_x_r: activation parameters
+    Returns:
+        F_symm: (M x N) array of symmetric forces for each state, or (N,) single state
+        F_asymm: (M x N) array of asymmetric forces for each state, or (N,) single state
+    """
+    u, single_state, M, N = normalize_shape(u)
+
+    # Compute activation function values
+    phi_u = sigmoid_function(u, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
+    phi_deriv_u = derivative_sigmoid_function(u, r_m=phi_r_m, beta=phi_beta, x_r=phi_x_r)
+
+    # Compute forces
+    F_symm =   phi_deriv_u * ((W_symm @ phi_u.T).T - u)  # / tau Shape: (M, N) 
+    F_asymm = phi_deriv_u * (W_asymm @ phi_u.T).T      # / tau Shape: (M, N)
+    # Compute the average value of the forces (integrate over the path) F_avg = ∫ F(h) dh / ∫ dh
+    du = np.linalg.norm(np.diff(u, axis=0), axis=1)  # Shape: (M-1,)
+    du = np.append(du, du[-1])  # Assume last step same as second last for simplicity
+    F_symm_avg = np.sum(F_symm * du[:, np.newaxis], axis=0) / np.sum(du)
+    F_asymm_avg = np.sum(F_asymm * du[:, np.newaxis], axis=0) / np.sum(du)
+    if single_state:
+        return F_symm[0], F_asymm[0]
+    else:
+        return F_symm, F_asymm, F_symm_avg, F_asymm_avg
+    
+def project_on_dynamics(history, F, eps=1e-12):
+    """
+    Compute the projection a quantity F on the direction of the dynamics for each time step:
+        proj[t] = F(t) · (state(t+1) - state(t)) / ||state(t+1) - state(t)||
+
+    Args:
+        history: (M, N) array, states over time (M time steps, N neurons)
+        flux:    (M, N) array, flux over time (M time steps, N neurons)
+        eps:     small threshold to avoid division by zero
+
+    Returns:
+        proj: (M,) array of projections for t = 0..M-2, last entry same as M-2
+    """
+    if history.ndim != 2 or F.ndim != 2:
+        raise ValueError("history and F must be 2D arrays of shape (M, N).")
+    if history.shape != F.shape:
+        raise ValueError("history and F must have the same shape (M, N).")
+
+    M, N = history.shape
+    delta = np.diff(history, axis=0)             # (M-1, N), state(t+1) - state(t)
+    norms = np.linalg.norm(delta, axis=1)        # (M-1,)
+    dots = np.sum(F[:-1, :] * delta, axis=1)  # (M-1,) this is F(t) · delta(t)
+
+    proj = np.zeros(M - 1, dtype=float)
+    mask = norms > eps
+    proj[mask] = dots[mask] / norms[mask] # this is the normalized projection
+    proj = np.append(proj, proj[-1])  # keep length M
+    return proj
 
 
+def plot_energy_from_npy(files, W_symm, W_asymm, tau, neuron1=0, neuron2=1, phi_beta=1.5, phi_r_m=30.0, phi_x_r=2.0):
+    """
+    Load firing rate data from multiple .npy files, compute energy, and plot 3D scatter
+    of energy vs two selected neurons.
+
+    Args:
+        files: list of str, paths to .npy files (shape: N x T)
+        W: connectivity matrix for energy computation
+        neuron1, neuron2: indices of neurons to plot
+        phi_beta, phi_r_m, phi_x_r: parameters for compute_energy
+    """
+    energies_list = []
+    f_symm_list1 = []
+    f_asymm_list1 = []
+    f_symm_list2 = []
+    f_asymm_list2 = []
+    rates_n1 = []
+    rates_n2 = []
+
+    for fpath in files:
+        h = np.load(fpath)  # shape: (N, T) or (T, N)? adjust if needed
+        # Ensure h shape is (states, neurons)
+        if h.ndim == 1:
+            h = h.reshape(1, -1)
+        elif h.shape[0] == W_symm.shape[0]:
+            h = h.T  # transpose (neurons x time) → (time x neurons)
+        elif h.shape[1] != W_symm.shape[0]:
+            raise ValueError(f"Incompatible shape: {h.shape} vs W {W_symm.shape}")
+        
+        # Compute energy for each time point/state
+        E, _, _ = compute_energy(W_symm, h, phi_beta=phi_beta, phi_r_m=phi_r_m, phi_x_r=phi_x_r)
+        # Compute forces and plot the vectors (project on the plane of neuron1 and neuron2)
+        F_symm, F_asymm, _, _ = compute_forces(W_symm, W_asymm, h, tau= tau, phi_beta=phi_beta, phi_r_m=phi_r_m, phi_x_r=phi_x_r)
+        # Store energies and selected neuron rates
+        
+        energies_list.extend(E)
+        # Force component for neuron1 and neuron2
+        f_symm_list1.extend(F_symm[:, neuron1])  # Force component for neuron1 
+        f_asymm_list1.extend(F_asymm[:, neuron1])  # Force component for neuron1 
+        f_symm_list2.extend(F_symm[:, neuron2])  # Force component for neuron2
+        f_asymm_list2.extend(F_asymm[:, neuron2])  # Force component for neuron2
+        rates_n1.extend(h[:, neuron1])
+        rates_n2.extend(h[:, neuron2])
+
+    energies_list = np.array(energies_list)
+    f_symm_list1 = np.array(f_symm_list1)
+    f_asymm_list1 = np.array(f_asymm_list1)
+    f_symm_list2 = np.array(f_symm_list2)
+    f_asymm_list2 = np.array(f_asymm_list2)
+    rates_n1 = np.array(rates_n1)
+    rates_n2 = np.array(rates_n2)
+
+    # 3D scatter plot
+    fig = plt.figure(figsize=(8,6))
+    ax = fig.add_subplot(111, projection='3d')
+    sc = ax.scatter(rates_n1, rates_n2, energies_list, c=energies_list, cmap='viridis', s=40)
+    # plot the vectors of the forces
+    ax.quiver(rates_n1, rates_n2, energies_list, f_symm_list1, f_symm_list2, np.zeros_like(energies_list), color='blue', length=0.5, normalize=True, label='Symmetric Force')
+    ax.quiver(rates_n1, rates_n2, energies_list, f_asymm_list1, f_asymm_list2, np.zeros_like(energies_list), color='red', length=0.5, normalize=True, label='Asymmetric Force')
+
+    ax.set_xlabel(f'Neuron {neuron1+1} firing rate')
+    ax.set_ylabel(f'Neuron {neuron2+1} firing rate')
+    ax.set_zlabel('Energy')
+    ax.set_title('Energy vs Neuron Firing Rates')
+    fig.colorbar(sc, label='Energy')
+    return fig
