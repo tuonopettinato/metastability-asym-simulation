@@ -103,14 +103,14 @@ plot_connectivity_matrices = True,
 plot_heatmap= False,
 verbose = True
 ou_threshold = 2.  # Threshold for highlighting OU noise in plots
-single_dir_name = "simulation_results_alt_2"
+single_dir_name = "simulation_results"
 multiple_dir_name = "multiple_simulations"
 
 # Number of runs
 runs = 1
 # Import connectivity or not
 import_connectivity = False
-test_set = True # Wether to save in a test set folder 
+test_set = False # Wether to save in a test set folder 
 
 
 # =============================================================================

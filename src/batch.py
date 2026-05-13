@@ -6,7 +6,9 @@ OU processes, and trial boundaries. It also generates an HTML plot of the overla
 
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+from matplotlib import cm
 
 from modules.dynamics import calculate_pattern_overlaps
 from parameters import (
@@ -187,3 +189,225 @@ print(f"\nSaved Plotly HTML to {html_path}")
 npy_path = os.path.join(plots_dir, "batch_overlaps.npy")
 np.save(npy_path, all_overlaps.astype(np.float32))
 print(f"Saved overlaps numpy to {npy_path}")
+
+# =====================================================
+# TRANSITION ANALYSIS
+# =====================================================
+print("\n================ TRANSITION ANALYSIS ================\n")
+
+T, P = all_overlaps.shape
+
+# ----------------------------------------------------
+# PARAMETRI
+# ----------------------------------------------------
+USE_THRESHOLD = True
+THRESHOLD = 0.5   # stato valido solo se overlap > THRESHOLD
+
+# ----------------------------------------------------
+# STATO DISCRETO
+# ----------------------------------------------------
+states = np.argmax(all_overlaps, axis=1) + 1  # shift 0->1, 1->2, ...
+
+if USE_THRESHOLD:
+    max_vals = np.max(all_overlaps, axis=1)
+    states[max_vals < THRESHOLD] = -1  # stato indefinito
+
+# ----------------------------------------------------
+# RIMUOVI STATI INVALIDI
+# ----------------------------------------------------
+valid_idx = states != -1
+states_clean = states[valid_idx]
+print(f"Total valid timesteps: {len(states_clean)} / {T}")
+
+# ----------------------------------------------------
+# TROVA TRANSIZIONI
+# ----------------------------------------------------
+transitions = np.where(np.diff(states_clean) != 0)[0] + 1
+print(f"Number of transitions: {len(transitions)}")
+
+# ----------------------------------------------------
+# DWELL TIMES GLOBALI
+# ----------------------------------------------------
+dwell_times = np.diff(np.concatenate(([0], transitions, [len(states_clean)])))
+mean_dwell = np.mean(dwell_times)
+std_dwell = np.std(dwell_times)
+print(f"Mean dwell time: {mean_dwell:.2f}")
+print(f"Std dwell time: {std_dwell:.2f}")
+
+# ----------------------------------------------------
+# ISTOGRAMMA DWELL TIMES GLOBALI (grigio)
+# ----------------------------------------------------
+plt.figure(figsize=(6,4))
+plt.hist(dwell_times, bins=30, alpha=0.7, color='gray')
+plt.axvline(mean_dwell, linestyle='--', linewidth=2, color = 'k',
+            label=f"Mean = {mean_dwell:.2f}\nStd = {std_dwell:.2f}")
+plt.xlabel("Dwell time", fontsize=20)
+plt.ylabel("Count", fontsize=20)
+#plt.title("Distribution of dwell times (all patterns)", fontsize=20)
+plt.legend(fontsize = 18)
+plt.grid(alpha=0.3)
+plt.tight_layout()
+plt.show()
+
+# ----------------------------------------------------
+# DISTRIBUZIONE TEMPORALE DELLE TRANSIZIONI
+# ----------------------------------------------------
+plt.figure(figsize=(6,4))
+plt.hist(transitions, bins=50, alpha=0.7)
+plt.xlabel("Time")
+plt.ylabel("Number of transitions")
+plt.title("Temporal distribution of transitions")
+plt.grid(alpha=0.3)
+plt.tight_layout()
+plt.show()
+
+# ----------------------------------------------------
+# MATRICE DI TRANSIZIONE
+# ----------------------------------------------------
+transition_matrix = np.zeros((P, P))
+for i in range(len(states_clean) - 1):
+    s1 = states_clean[i] - 1  # map 1..P -> 0..P-1
+    s2 = states_clean[i + 1] - 1
+    if s1 != s2:
+        transition_matrix[s1, s2] += 1
+
+# normalizzazione righe
+row_sums = transition_matrix.sum(axis=1, keepdims=True)
+transition_matrix = np.divide(
+    transition_matrix,
+    row_sums,
+    where=row_sums != 0
+)
+print("\nTransition matrix (row-normalized):\n")
+print(transition_matrix)
+
+# colori tab10
+colors = plt.get_cmap('tab10').colors[:P]
+
+plt.figure(figsize=(6,5))
+plt.imshow(transition_matrix, cmap='Greys')  # bianco-nero
+plt.colorbar(label="Transition probability")
+plt.xticks(ticks=np.arange(P), labels=[f"P{p+1}" for p in range(P)])
+plt.yticks(ticks=np.arange(P), labels=[f"P{p+1}" for p in range(P)])
+plt.xlabel("To state", fontsize=20)
+plt.ylabel("From state", fontsize=20)
+#plt.title("Transition matrix", fontsize=20)
+plt.tight_layout()
+plt.show()
+
+# ----------------------------------------------------
+# RATE DI TRANSIZIONE
+# ----------------------------------------------------
+total_time = len(states_clean)
+transition_rate = len(transitions) / total_time
+print(f"\nTransition rate: {transition_rate:.4f} transitions per timestep")
+
+# ----------------------------------------------------
+# DWELL TIMES PER PATTERN
+# ----------------------------------------------------
+dwell_start_indices = np.concatenate(([0], transitions))
+dwell_states = states_clean[dwell_start_indices]
+
+dwell_per_pattern = {p+1: [] for p in range(P)}
+for dt, st in zip(dwell_times, dwell_states):
+    if st != -1:
+        dwell_per_pattern[st].append(dt)
+
+print("\n=========== DWELL TIMES PER PATTERN ===========\n")
+for p in range(1, P+1):
+    values = dwell_per_pattern[p]
+    if len(values) == 0:
+        continue
+    mean_p = np.mean(values)
+    std_p = np.std(values)
+    print(f"Pattern {p}: count={len(values)}, mean={mean_p:.2f}, std={std_p:.2f}")
+
+# ----------------------------------------------------
+# ISTOGRAMMI PER PATTERN
+# ----------------------------------------------------
+for p in range(1, P+1):
+    values = dwell_per_pattern[p]
+    if len(values) == 0:
+        continue
+    mean_p = np.mean(values)
+    std_p = np.std(values)
+
+    plt.figure(figsize=(5,4))
+    plt.hist(values, bins=20, alpha=0.7, color=colors[p-1])
+    plt.axvline(mean_p, linestyle='--', linewidth=2, color = 'k',
+                label=f"Mean = {mean_p:.2f}\nStd = {std_p:.2f}")
+    plt.xlabel("Dwell time", fontsize=20)
+    plt.ylabel("Count", fontsize=20)
+    plt.legend(title = f"P{p}", fontsize = 18)
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+# ----------------------------------------------------
+# BOXPLOT COMPARATIVO (ordine personalizzato)
+# ----------------------------------------------------
+order = [3, 4, 1, 2]
+
+data = []
+labels = []
+valid_patterns = []
+
+for p in order:
+    values = dwell_per_pattern[p]
+    if len(values) > 0:
+        data.append(values)
+        labels.append(f"P{p}")
+        valid_patterns.append(p)
+
+plt.figure(figsize=(8,5))
+
+box = plt.boxplot(
+    data,
+    labels=labels,
+    patch_artist=True,
+    medianprops=dict(color='black', linewidth=2),
+    whiskerprops=dict(linewidth=1.5),
+    showfliers=False,
+    capprops=dict(linewidth=1.5)
+)
+
+# colori coerenti con i pattern
+ordered_colors = [colors[p-1] for p in valid_patterns]
+
+# scatter points
+for i, p in enumerate(valid_patterns):
+    values = dwell_per_pattern[p]
+    x_jitter = np.random.normal(loc=i+1, scale=0.05, size=len(values))
+    plt.scatter(
+        x_jitter,
+        values,
+        color=colors[p-1],
+        alpha=0.7,
+        s=15,
+        edgecolor='k',
+        linewidth=0.3
+    )
+
+# colora le box
+for patch, color in zip(box['boxes'], ordered_colors):
+    patch.set_facecolor(color)
+    patch.set_alpha(0.3)
+
+plt.ylabel("Dwell time", fontsize=20)
+plt.xticks(fontsize=18)
+plt.grid(alpha=0.3)
+plt.tight_layout()
+plt.show()
+
+# ----------------------------------------------------
+# SALVATAGGIO DEI RISULTATI
+# ----------------------------------------------------
+analysis_dir = os.path.join(plots_dir, "transition_analysis")
+os.makedirs(analysis_dir, exist_ok=True)
+
+np.save(os.path.join(analysis_dir, "states.npy"), states_clean)
+np.save(os.path.join(analysis_dir, "transitions.npy"), transitions)
+np.save(os.path.join(analysis_dir, "dwell_times.npy"), dwell_times)
+np.save(os.path.join(analysis_dir, "transition_matrix.npy"), transition_matrix)
+
+print(f"\nSaved transition analysis to {analysis_dir}")

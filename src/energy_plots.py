@@ -10,6 +10,7 @@ from modules.activation import step_function
 from modules.connectivity import generate_connectivity_matrix, plot_matrix
 from modules.dynamics import simulate_network, calculate_pattern_overlaps
 from modules.energy import compute_energy, compute_forces, project_on_dynamics
+from scipy.ndimage import gaussian_filter1d
 
 # Import all parameters from parameters.py
 from parameters import (
@@ -227,11 +228,162 @@ def main():
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, "overlaps_and_projections.png"))
 
+    # end old code
+
+    # ===================== FINAL PLOT =====================
+    fig, axs = plt.subplots(2, 1, figsize=(12, 8),
+                            gridspec_kw={'height_ratios': [1, 2]})
+
+    # === PREP DATI ===
+    sym = proj_flux_symm / N
+    asym = proj_flux_asymm / N
+    total = (proj_flux_symm + proj_flux_asymm) / N
+
+    # ===================== SMOOTHING =====================
+    sym_s = gaussian_filter1d(sym, sigma=15)
+    asym_s = gaussian_filter1d(asym, sigma=15)
+
+    # stato unico (evita overlap)
+    state_asym = asym_s > sym_s
+    state_sym = ~state_asym
+
+    # =====================================================
+    # === OVERLAPS (PANNELLO SOPRA)
+    # =====================================================
+    for i in range(p):
+        axs[0].plot(t, overlaps[i], label=f'P {i+1}')
+
+    axs[0].set_ylabel("Overlaps", fontsize=20)
+    axs[0].tick_params(axis='both', labelsize=18)
+    axs[0].set_xlim(12000, 14000)
+
+    ymin_ov = np.min(overlaps)
+    ymax_ov = np.max(overlaps)
+
+    # shading pulito (NO overlap)
+    axs[0].fill_between(
+        t, ymin_ov, ymax_ov,
+        where=state_asym,
+        color='purple', alpha=0.10, interpolate=True
+    )
+
+    axs[0].fill_between(
+        t, ymin_ov, ymax_ov,
+        where=state_sym,
+        color='gray', alpha=0.06, interpolate=True
+    )
+
+    # =====================================================
+    # === PROJECTIONS (PANNELLO SOTTO)
+    # =====================================================
+    axs[1].plot(t, sym, label='$\\mathbf{F}^S$', color='black', alpha=1.0)
+    axs[1].plot(t, asym, label='$\\mathbf{F}^A$',
+                color='purple', alpha=0.8)
+    #axs[1].plot(t, total, label='Total',
+    #            color='red', alpha=0.6)
+
+    ymin = min(sym.min(), asym.min(), total.min())
+    ymax = max(sym.max(), asym.max(), total.max())
+
+    # shading coerente
+    axs[1].fill_between(
+        t, ymin, ymax,
+        where=state_asym,
+        color='purple', alpha=0.10, interpolate=True
+    )
+
+    axs[1].fill_between(
+        t, ymin, ymax,
+        where=state_sym,
+        color='gray', alpha=0.06, interpolate=True
+    )
+
+    # zero line
+    axs[1].axhline(0, color='gray', linestyle='--', alpha=0.5)
+
+    # labels
+    axs[1].set_ylabel("Force Proj. / N", fontsize=20)
+    axs[1].set_xlabel("$t$", fontsize=20)
+    axs[1].legend(fontsize=18)
+    axs[1].tick_params(axis='both', labelsize=18)
+
+    axs[1].set_xlim(12000, 14000)
+    axs[1].set_ylim(ymin, 0.27)
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "overlaps_and_projections.png"))
+
     if show_sim_plots:
         plt.show()
+"""
+    # ===================== FINAL PLOT =====================
+    fig, axs = plt.subplots(2, 1, figsize=(12, 8),
+                            gridspec_kw={'height_ratios': [1, 2]})
 
+    # === PREP DATI ===
+    sym = proj_flux_symm / N
+    asym = proj_flux_asymm / N
+    total = (proj_flux_symm + proj_flux_asymm) / N
 
+    # maschere dinamiche
+    mask_asym = (asym > sym) & (asym > 0)
+    mask_sym = (sym > asym)
 
+    # =====================================================
+    # === OVERLAPS (PANNELLO SOPRA)
+    # =====================================================
+    for i in range(p):
+        axs[0].plot(t, overlaps[i], label=f'P {i+1}')
+
+    axs[0].set_ylabel("Overlaps", fontsize=20)
+    axs[0].tick_params(axis='both', labelsize=18)
+    axs[0].set_xlim(12000, 14000)
+
+    # range dinamico per shading
+    ymin_ov = np.min(overlaps)
+    ymax_ov = np.max(overlaps)
+
+    # shading coerente con sotto
+    axs[0].fill_between(t, ymin_ov, ymax_ov, where=mask_asym,
+                        color='purple', alpha=0.08, interpolate=True)
+
+    axs[0].fill_between(t, ymin_ov, ymax_ov, where=mask_sym,
+                        color='gray', alpha=0.08, interpolate=True)
+
+    # =====================================================
+    # === PROJECTIONS (PANNELLO SOTTO)
+    # =====================================================
+    axs[1].plot(t, sym, label='Sym', color='black', alpha=1.)
+    axs[1].plot(t, asym, label='$\\zeta(t) \\cdot$ Asym',
+                color='purple', alpha=0.8)
+
+    # shading dinamico
+    ymin = min(sym.min(), asym.min(), total.min())
+    ymax = max(sym.max(), asym.max(), total.max())
+
+    axs[1].fill_between(t, ymin, ymax, where=mask_asym,
+                        color='purple', alpha=0.08, interpolate=True)
+
+    axs[1].fill_between(t, ymin, ymax, where=mask_sym,
+                        color='gray', alpha=0.08, interpolate=True)
+
+    # linea zero sopra shading
+    axs[1].axhline(0, color='gray', linestyle='--', alpha=0.5)
+
+    # labels
+    axs[1].set_ylabel("Force Proj. / N", fontsize=20)
+    axs[1].set_xlabel("$t$", fontsize=20)
+    axs[1].legend(fontsize=18)
+    axs[1].tick_params(axis='both', labelsize=18)
+    axs[1].set_xlim(12000, 14000)
+    axs[1].set_ylim(ymin, ymax)
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "overlaps_and_projections.png"))
+
+    if show_sim_plots:
+        plt.show()
+"""
 """
     # Plot total, symmetric, and asymmetric energy for original and 'new' matrices
     plt.figure(figsize=(12, 6))
