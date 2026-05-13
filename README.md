@@ -2,6 +2,8 @@
 
 This project is part of my Master's Thesis in Physics of Complex Systems and aims to simulate the dynamics of a neural network based on the principles outlined by Recanatesi, Mazzucato et al. (https://arxiv.org/abs/2001.09600).
 
+NB: .npy files are quite large, so they are not included here.
+
 # Overview
 Users can modify these parameters in `parameters.py` to customize the simulation.
 Results are visualized using Matplotlib, can also be saved as PNG files. The final overlaps of memory patterns are printed to the console.
